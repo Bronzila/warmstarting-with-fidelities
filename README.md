@@ -4,8 +4,8 @@
 
 ## Installation
 ```
-git clone https://github.com/University of Freiburg/WarmstartingWithFidelitites.git
-cd WarmstartingWithFidelitites
+git clone https://github.com/University of Freiburg/warmstarting-with-fidelities.git
+cd warmstarting-with-fidelities
 conda create -n warmstarting python=3.8
 conda activate warmstarting
 
