@@ -4,7 +4,20 @@ import os
 import openml
 import numpy as np
 import torch
+from torch.utils.data import DataLoader, WeightedRandomSampler, TensorDataset, Dataset
 
+
+
+class TrainingSet(Dataset):
+    def __init__(self,X,Y):
+        self.X = X
+        self.Y = Y                  
+
+    def __len__(self):
+        return len(self.X)
+
+    def __getitem__(self, idx):
+        return [self.X[idx], self.Y[idx]]
 
 class DataHandler:
     """
@@ -72,7 +85,9 @@ class DataHandler:
         self,
         validation_split: float = 0.2,
         shuffle_dataset: bool = True,
-        seed: int = 42) -> Tuple[torch.tensor, torch.tensor, torch.tensor, torch.tensor]:
+        batch_size: int = 64,
+        seed: int = 42,
+        device:torch.device = torch.device('cuda')) -> Tuple[DataLoader, DataLoader]:
 
         """ Splits the dataset into X_train, y_train, X_val, y_val
         and converts them to torch.Tensor
@@ -81,7 +96,9 @@ class DataHandler:
         ----------
         validation_split (float): validation data size
         shuffle_dataset (bool): if data will be shuffled
+        batch_size (int): batch size
         seed: (int): numpy seed
+        device: (torch.device): device to run (cuda/cpu)
 
         Returns
         -------
@@ -104,8 +121,15 @@ class DataHandler:
             np.random.shuffle(indices)
         train_indices, val_indices = indices[split:], indices[:split]
 
-        self.X_train = torch.from_numpy(self.X[train_indices])
-        self.y_train = torch.from_numpy(self.y[train_indices])
-        self.X_val = torch.from_numpy(self.X[val_indices])
-        self.y_val = torch.from_numpy(self.y[val_indices])
-        return self.X_train, self.y_train, self.X_val, self.y_val
+        self.X_train = torch.from_numpy(self.X[train_indices]).to(device)
+        self.y_train = torch.from_numpy(self.y[train_indices]).to(device)
+        self.X_val = torch.from_numpy(self.X[val_indices]).to(device)
+        self.y_val = torch.from_numpy(self.y[val_indices]).to(device)
+
+        training_dataset = TrainingSet(self.X_train, self.y_train)
+        train_dataloader = torch.utils.data.DataLoader(training_dataset, batch_size=batch_size)
+
+        val_data = TrainingSet(self.X_val, self.y_val)
+        valid_dataloader = torch.utils.data.DataLoader(val_data, batch_size=batch_size)
+
+        return train_dataloader, valid_dataloader
