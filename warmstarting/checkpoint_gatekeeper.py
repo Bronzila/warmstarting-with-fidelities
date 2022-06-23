@@ -147,7 +147,7 @@ class CheckpointGatekeeper:
         optimizer.load_state_dict(checkpoint['optimizer'])
         lr_scheduler = checkpoint['lr_scheduler']
 
-        return model, optim, lr_scheduler
+        return model, optimizer, lr_scheduler
 
 
 if __name__ == "__main__":
