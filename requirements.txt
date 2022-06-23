@@ -1,4 +1,6 @@
+torch
+ConfigSpace
+matplotlib
 hpobench~=0.0.10
 numpy~=1.18.2
-configspace~=0.4.19
 torchmetrics~=0.9.1
