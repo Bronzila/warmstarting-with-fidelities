@@ -116,7 +116,7 @@ class DataHandler:
 
         indices = list(range(len(self.X)))
         split = int(np.floor(validation_split * len(self.X)))
-        if shuffle_dataset :
+        if shuffle_dataset:
             np.random.seed(seed)
             np.random.shuffle(indices)
         train_indices, val_indices = indices[split:], indices[:split]
