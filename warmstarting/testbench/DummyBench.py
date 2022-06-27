@@ -11,13 +11,15 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
+from torch.utils.tensorboard import SummaryWriter
 
 from warmstarting.testbench.WarmstartingBenchTemplate import WarmstartingBenchTemplate
 
 
 class DummyBench(WarmstartingBenchTemplate):
-    def __init__(self, train_dataloader: DataLoader, valid_dataloader: DataLoader, rng: Union[np.random.RandomState, int, None] = None,):
-        super(DummyBench, self).__init__(train_dataloader, valid_dataloader, rng)
+    def __init__(self, train_dataloader: DataLoader, valid_dataloader: DataLoader,
+                 writer: SummaryWriter, rng: Union[np.random.RandomState, int, None] = None,):
+        super(DummyBench, self).__init__(train_dataloader, valid_dataloader, writer, rng)
 
     def objective_function_test(self, configuration: Union[CS.Configuration, Dict],
                                 fidelity: Union[Dict, CS.Configuration, None] = None,
@@ -28,11 +30,9 @@ class DummyBench(WarmstartingBenchTemplate):
     def get_configuration_space(seed: Union[int, None] = None) -> CS.ConfigurationSpace:
         cs = ConfigurationSpace()
 
-        p1 = OrdinalHyperparameter("hyp_1", [16, 32, 64, 128, 256, 512])
-        p2 = OrdinalHyperparameter("hyp_2", [16, 32, 64, 128, 256, 512])
+        lr = CS.hyperparameters.CategoricalHyperparameter('lr', choices=[1e-2, 1e-3, 1e-4, 1e-5, 1e-6])
 
-        cs.add_hyperparameter(p1)
-        cs.add_hyperparameter(p2)
+        cs.add_hyperparameter(lr)
 
         return cs
 
@@ -57,13 +57,20 @@ class DummyBench(WarmstartingBenchTemplate):
     def init_optim(self, param: nn.Parameter, config: Union[CS.Configuration, Dict],
                    fidelity: Union[CS.Configuration, Dict, None] = None,
                    rng: Union[int, np.random.RandomState, None] = None) -> optim.Optimizer:
-        return optim.SGD(param, lr=1e-3)
+        return optim.Adam(param, lr=config["lr"])
 
-    def init_lr_sched(self, optimizer: optim.Optimizer, config, fidelity, rng):
-        return optim.lr_scheduler.ConstantLR(optimizer, 0.5, 5, -1)
+    def init_lr_sched(self, optimizer: optim.Optimizer, config: CS.Configuration,
+                      fidelity: Union[CS.Configuration, None] = None,
+                      rng: Union[int, np.random.RandomState, None] = None):
+        return None
+        # return optim.lr_scheduler.ConstantLR(optimizer, 0.5, 5, -1)
 
-    def init_criterion(self, config, fidelity, rng):
+    def init_criterion(self, config: CS.Configuration, fidelity: Union[CS.Configuration, None] = None,
+                       rng: Union[int, np.random.RandomState, None] = None):
         return nn.CrossEntropyLoss()
+
+
+
 
 
 

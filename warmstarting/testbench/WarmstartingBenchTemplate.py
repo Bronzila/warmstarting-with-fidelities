@@ -11,12 +11,16 @@ import ConfigSpace as CS
 from hpobench.abstract_benchmark import AbstractBenchmark
 from hpobench.util.rng_helper import get_rng
 
+from torch.utils.tensorboard import SummaryWriter
+from warmstarting.checkpoint_gatekeeper import CheckpointGatekeeper
+
 
 class WarmstartingBenchTemplate(AbstractBenchmark):
     def __init__(self,
                  train_dataloader: DataLoader,
                  valid_dataloader: DataLoader,
-                 rng: Union[np.random.RandomState, int, None] = None,):
+                 writer: SummaryWriter,
+                 rng: Union[np.random.RandomState, int, None] = None):
         """
         This class is a base class for implementing warm starting for HPO
         """
@@ -38,6 +42,10 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
         self.train_metrics = metrics.clone(prefix='train_')
         self.valid_metrics = metrics.clone(prefix='val_')
 
+        self.writer = writer
+        self.gk = CheckpointGatekeeper()
+        self.valid_epochs = 0
+
     def objective_function(self, configuration: CS.Configuration,
                            fidelity: Union[CS.Configuration, None] = None,
                            rng: Union[np.random.RandomState, int, None] = None,
@@ -57,23 +65,29 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
         """
         criterion = self.init_criterion(configuration, fidelity, rng)
 
-        model, model_fit_time, train_loss, train_score_cost = self._train_objective(configuration, fidelity, criterion, rng)
+        config_id, model, model_fit_time, train_loss, train_score_cost = self._train_objective(configuration, fidelity, criterion, rng)
 
         valid_score_cost = 0
         for i, (X_valid, y_valid) in enumerate(self.valid_dataloader):
             _start = time.time()
             pred = model(X_valid)
             # Valid Acc for one data point
-            self.valid_metrics(pred, y_valid)
+            loss = criterion(pred, y_valid)
+            metrics = self.valid_metrics(pred, y_valid)
             valid_score_cost += time.time() - _start
+            # self.writer.add_scalar("Valid_accuracy_{}".format(config_id), metrics["val_Accuracy"], self.valid_epochs)
+            self.writer.add_scalar("Valid_accuracy_{}_{}".format(config_id, configuration["lr"]), loss, self.valid_epochs)
+            self.valid_epochs += 1
 
         # Valid Acc for the valid dataset
         total_valid_acc = self.valid_metrics["Accuracy"].compute()
         val_loss = 1 - total_valid_acc
 
         return {
-            'function_value': val_loss,
-            'cost': model_fit_time + valid_score_cost
+            'train_loss': train_loss,
+            'train_cost': train_score_cost,
+            'val_loss': val_loss,
+            'val_cost': model_fit_time + valid_score_cost
         }
 
     def objective_function_test(self, configuration: CS.Configuration,
@@ -131,17 +145,17 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
         lr_sched = self.init_lr_sched(optim, config, fidelity, rng)
 
         # call the loader
-        gk = CheckpointGatekeeper()
-        gk.load_model_state(model, optim, config)
+
+        self.gk.load_model_state(model, optim, config)
 
         # fitting the model with subsampled data
         start = time.time()
         train_score_cost, train_loss = self.train(model, criterion, optim, lr_sched)
         model_fit_time = time.time() - start - train_score_cost
 
-        gk.save_model_state(model, optim, config, lr_sched)
+        config_id = self.gk.save_model_state(model, optim, config, lr_sched)
 
-        return model, model_fit_time, train_loss, train_score_cost
+        return config_id, model, model_fit_time, train_loss, train_score_cost
 
     def init_model(self, config: Union[CS.Configuration, Dict],
                    fidelity: Union[CS.Configuration, Dict, None] = None,
@@ -197,6 +211,7 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
         lr_scheduler
             If Scheduler exists
         """
+        num = 0
         train_score_cost = 0
         for i, (X_train, y_train) in enumerate(self.train_dataloader):
             optim.zero_grad()
@@ -205,10 +220,16 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
             loss.backward()
             optim.step()
 
+            if i % 5 == 0:
+                print("Batch {}; Loss: {}".format(i, loss))
+
             # Metric
             _start = time.time()
-            self.train_metrics(pred, y_train)
+            metrics = self.train_metrics(pred, y_train)
             train_score_cost += time.time() - _start
+
+            # self.writer.add_scalar("Train_accuracy_{}".format(config_id), metrics["train_Accuracy"], i)
+            num += 1
 
         if lr_scheduler is not None:
             lr_scheduler.step()

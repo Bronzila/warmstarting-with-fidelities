@@ -25,7 +25,7 @@ class CheckpointGatekeeper:
         self.base_path = path
 
         if not os.path.exists(self.base_path):
-            os.mkdir(self.base_path)
+            os.makedirs(self.base_path)
 
         self.last_id = -1
         self.config_store = dict()
@@ -112,6 +112,7 @@ class CheckpointGatekeeper:
         path = os.path.join(self.base_path, checkpoint_name)
 
         torch.save(checkpoint, path)
+        return id
 
     def load_model_state(self, model: torch.nn.Module, optimizer: torch.optim.Optimizer, config: CS.Configuration):
         """ Checks if configuration config has been trained before and if so returns the weights, otherwise None
@@ -137,7 +138,7 @@ class CheckpointGatekeeper:
         """
         exists, id = self.check_config_saved(config)
         if not exists:
-            return None
+            return id, None, None, None
 
         checkpoint_name = "model_" + str(id) + ".pth"
 
@@ -147,7 +148,7 @@ class CheckpointGatekeeper:
         optimizer.load_state_dict(checkpoint['optimizer'])
         lr_scheduler = checkpoint['lr_scheduler']
 
-        return model, optimizer, lr_scheduler
+        return id, model, optimizer, lr_scheduler
 
 
 if __name__ == "__main__":
