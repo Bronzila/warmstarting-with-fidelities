@@ -73,11 +73,6 @@ class ConfigSpaceModel():
             raise ValueError("setup_config_space: epoch_list[0] must be > epoch_list[1]")
 
         self.seed = seed
-        self.lr_list = lr_list
-        self.momentum_list = momentum_list
-        self.optim_list = momentum_list
-        self.epoch_list = epoch_list
-
         self._config_space = CS.ConfigurationSpace(seed=seed)
         lr = CSH.UniformFloatHyperparameter('lr', lower=lr_list[0], upper=lr_list[1],
             log=True)
@@ -99,6 +94,11 @@ class ConfigSpaceModel():
         Returns:
             Configurationspace
             Configurationspace
+
+        Raises
+        ------
+        ValueError
+            self._config_space must be initalized before calling this function
         """
 
         if self._config_space is None:
