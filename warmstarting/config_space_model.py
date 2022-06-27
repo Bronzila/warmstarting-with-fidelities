@@ -1,4 +1,5 @@
-from typing import List
+from tokenize import String
+from typing import List, Tuple
 import ConfigSpace as CS
 import ConfigSpace.hyperparameters as CSH
 from torch import optim
@@ -7,14 +8,15 @@ class ConfigSpaceModel():
     """Defines two configuration space: hp_config_space, fidelitiy_space
     """
     def __init__(self) -> None:
-        self.hp_config_space:CS.ConfigurationSpace = None
-        self.fidelity_space:CS.ConfigurationSpace = None
+        self._config_space: CS.ConfigurationSpace = None
 
     def setup_config_space(
-        self, 
+        self,
+        seed: int,
         lr_list: List[float],
-        momentum_list: List[float], 
-        optim_list: List[optim.Optimizer]) -> CS.ConfigurationSpace:
+        momentum_list: List[float],
+        optim_list: List[optim.Optimizer],
+        epoch_list:List[int]) -> CS.ConfigurationSpace:
 
         """ Defines a conditional hyperparameter search-space.
         Parameters
@@ -31,8 +33,14 @@ class ConfigSpaceModel():
 
         optim_list: List[torch.optim.Optimizer]
             List of possible optimizers
+
+        epoch_list : List
+            epoch_list rate list that has the minimum and maximum learning rates
+            Must contain maximum 2 elements.
+            epoch_list[0] must be > epoch_list[1]
+
         Returns:
-            Configurationspace ("lr", "momentum", "optimizer")
+            Configurationspace ("lr", "momentum", "optimizer", "epoch")
         """
         if not isinstance(lr_list, list):
             raise ValueError("setup_config_space: [lr_list] must be a list")
@@ -55,26 +63,6 @@ class ConfigSpaceModel():
         if not isinstance(optim_list, list):
             raise ValueError("setup_config_space: [optim_list] must be a list")
 
-        self.hp_config_space = CS.ConfigurationSpace(seed=0)
-        lr = CSH.UniformFloatHyperparameter('lr', lower=lr_list[0], upper=lr_list[1], log=True)
-        momentum = CSH.UniformFloatHyperparameter('momentum', lower=momentum_list[0], upper=momentum_list[1], log=True)
-        optimizer = CSH.CategoricalHyperparameter('optimizer', choices=optim_list)
-        self.hp_config_space.add_hyperparameters([lr,momentum, optimizer])
-        
-        return self.hp_config_space
-
-    def setup_fidelity_space(self, epoch_list:List[int]):
-        """ Defines a conditional hyperparameter search-space.
-        Parameters
-        ----------
-        epoch_list : List
-            epoch_list rate list that has the minimum and maximum learning rates
-            Must contain maximum 2 elements.
-            epoch_list[0] must be > epoch_list[1]
-
-        Returns:
-            Configurationspace
-        """
         if not isinstance(epoch_list, list):
             raise ValueError("setup_config_space: [epoch_list] must be a list")
 
@@ -84,34 +72,44 @@ class ConfigSpaceModel():
         if epoch_list[0] >= epoch_list[1]:
             raise ValueError("setup_config_space: epoch_list[0] must be > epoch_list[1]")
 
-        self.fidelity_space = CS.ConfigurationSpace(seed=0)
+        self.seed = seed
+        self.lr_list = lr_list
+        self.momentum_list = momentum_list
+        self.optim_list = momentum_list
+        self.epoch_list = epoch_list
+
+        self._config_space = CS.ConfigurationSpace(seed=seed)
+        lr = CSH.UniformFloatHyperparameter('lr', lower=lr_list[0], upper=lr_list[1],
+            log=True)
+        momentum = CSH.UniformFloatHyperparameter('momentum', lower=momentum_list[0], upper=momentum_list[1], 
+            log=True)
+        optimizer = CSH.CategoricalHyperparameter('optimizer', choices=optim_list)
         epoch = CSH.UniformIntegerHyperparameter('epoch', lower=epoch_list[0], upper=epoch_list[1], log=True)
-        self.fidelity_space.add_hyperparameters([epoch])
+        self._config_space.add_hyperparameters([lr, momentum, optimizer, epoch])
         
-        return self.fidelity_space
+        return self._config_space
 
-    def sample_hp_config_space_configuration(self, size: int = 1) -> List[CS.configuration_space.Configuration]:
-        """ Sample (size) configurations from the hp configuration space object.
+    def get_config_spaces(self, fidelities: List[String] = []) -> Tuple[CS.ConfigurationSpace, CS.ConfigurationSpace]:
+        """ Splits the _config_space into two config spaces and returns hp_space and fidelity_space
         Parameters
         ----------
-        size (int, optional) – Number of configurations to sample. Default to 1
+        fidelities : List
+            fidelity names to split from the _config_space
 
         Returns:
-            List[Configuration]
+            Configurationspace
+            Configurationspace
         """
-        if self.hp_config_space == None:
-            raise ValueError("sample_hp_config_space_configuration: hp_config_space is None")
-        return self.hp_config_space.sample_configuration(size=size)
 
-    def sample_fidelity_space_configuration(self, size: int = 1) -> List[CS.configuration_space.Configuration]:
-        """ Sample (size) configurations from the fidelity configuration space object.
-        Parameters
-        ----------
-        size (int, optional) – Number of configurations to sample. Default to 1
+        if self._config_space is None:
+            raise ValueError("split_spaces: _config_space is None, setup_config_space must be called first.")
 
-        Returns:
-            List[Configuration]
-        """
-        if self.fidelity_space == None:
-            raise ValueError("sample_hp_config_space_configuration: fidelity_space is None")
-        return self.fidelity_space.sample_configuration(size=size)
+        hp_space = CS.ConfigurationSpace(seed=self.seed)
+        fidelity_space = CS.ConfigurationSpace(seed=self.seed)
+        for param in self._config_space.keys():
+            if (param in fidelities):
+                fidelity_space.add_hyperparameter(self._config_space[param])
+            else:
+                hp_space.add_hyperparameter(self._config_space[param])
+
+        return hp_space, fidelity_space
