@@ -19,6 +19,8 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
     def __init__(self,
                  train_dataloader: DataLoader,
                  valid_dataloader: DataLoader,
+                 configuration_space: CS.ConfigurationSpace,
+                 fidelity_space: CS.ConfigurationSpace,
                  writer: SummaryWriter,
                  rng: Union[np.random.RandomState, int, None] = None):
         """
@@ -34,8 +36,8 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
         self.valid_dataloader = valid_dataloader
 
         # Observation and fidelity spaces
-        self.fidelity_space = self.get_fidelity_space(self.seed)
-        self.configuration_space = self.get_configuration_space(self.seed)
+        self._configuration_space = configuration_space
+        self._fidelity_space = fidelity_space
 
         # Metrics
         metrics = MetricCollection([Accuracy(), F1Score(), Precision()])
@@ -98,23 +100,15 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
                                 **kwargs) -> Dict:
         raise NotImplementedError()
 
-    @staticmethod
-    def get_configuration_space(seed: Union[int, None] = None) -> CS.ConfigurationSpace:
+    def get_configuration_space(self, seed: Union[int, None] = None) -> CS.ConfigurationSpace:
         """Parameter space to be optimized --- contains the hyperparameters
         """
-        raise NotImplementedError()
-        # # TODO: Call own config space creator
-        # cs = CS.ConfigurationSpace()
-        # return cs
+        return self._configuration_space
 
-    @staticmethod
-    def get_fidelity_space(seed: Union[int, None] = None) -> CS.ConfigurationSpace:
+    def get_fidelity_space(self, seed: Union[int, None] = None) -> CS.ConfigurationSpace:
         """Fidelity space available --- specifies the fidelity dimensions
         """
-        raise NotImplementedError()
-        # TODO: Call own fidelity space creator
-        # fidelity_space = CS.ConfigurationSpace(seed=seed)
-        # return fidelity_space
+        return self._fidelity_space
 
     def get_meta_information(self) -> Dict:
         raise NotImplementedError()
