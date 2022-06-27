@@ -68,6 +68,7 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
         config_id, model, model_fit_time, train_loss, train_score_cost = self._train_objective(configuration, fidelity, criterion, rng)
 
         valid_score_cost = 0
+        valid_loss_list = []
         for i, (X_valid, y_valid) in enumerate(self.valid_dataloader):
             _start = time.time()
             pred = model(X_valid)
@@ -76,8 +77,9 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
             self.valid_metrics(pred, y_valid)
             valid_score_cost += time.time() - _start
             # self.writer.add_scalar("Valid_accuracy_{}".format(config_id), metrics["val_Accuracy"], self.valid_epochs)
-            self.writer.add_scalar("Valid_accuracy_{}_{}".format(config_id, configuration["lr"]), loss, self.valid_epochs)
+            valid_loss_list.append(loss.detach().numpy())
             self.valid_epochs += 1
+        self.writer.add_scalar("Valid_accuracy_{}_{}".format(config_id, configuration["lr"]), np.mean(valid_loss_list), self.valid_epochs)
 
         # Valid Acc for the valid dataset
         total_valid_acc = self.valid_metrics["Accuracy"].compute()
@@ -198,7 +200,7 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
         """
         raise NotImplementedError()
 
-    def train(self, model: nn.Module, criterion: nn.Module, optim: torch.optim.Optimizer, config_id: int,
+    def train(self, model: nn.Module, criterion: nn.Module, optim: torch.optim.Optimizer,
               lr_scheduler: torch.optim.lr_scheduler = None):
         """
         The training function as a pytorch implementation
@@ -215,7 +217,6 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
         lr_scheduler
             If Scheduler exists
         """
-        num = 0
         train_score_cost = 0
         loss_list = []
         for i, (X_train, y_train) in enumerate(self.train_dataloader):
@@ -233,9 +234,6 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
             _start = time.time()
             self.train_metrics(pred, y_train)
             train_score_cost += time.time() - _start
-
-            self.writer.add_scalar("Train_loss_{}".format(config_id), loss, i)
-            num += 1
 
         if lr_scheduler is not None:
             lr_scheduler.step()

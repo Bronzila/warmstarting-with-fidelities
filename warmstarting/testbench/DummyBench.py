@@ -50,7 +50,8 @@ class DummyBench(WarmstartingBenchTemplate):
             nn.ReLU(),
             nn.Linear(50, 50),
             nn.ReLU(),
-            nn.Linear(50, 10)
+            nn.Linear(50, 3),
+            nn.Softmax(dim=1)
         )
         return model
 
