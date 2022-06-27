@@ -138,7 +138,7 @@ class CheckpointGatekeeper:
         """
         exists, id = self.check_config_saved(config)
         if not exists:
-            return id, None, None, None
+            return None
 
         checkpoint_name = "model_" + str(id) + ".pth"
 
@@ -148,7 +148,7 @@ class CheckpointGatekeeper:
         optimizer.load_state_dict(checkpoint['optimizer'])
         lr_scheduler = checkpoint['lr_scheduler']
 
-        return id, model, optimizer, lr_scheduler
+        return model, optimizer, lr_scheduler
 
 
 if __name__ == "__main__":

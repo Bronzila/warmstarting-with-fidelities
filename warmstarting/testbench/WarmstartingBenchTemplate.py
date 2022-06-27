@@ -73,7 +73,7 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
             pred = model(X_valid)
             # Valid Acc for one data point
             loss = criterion(pred, y_valid)
-            metrics = self.valid_metrics(pred, y_valid)
+            self.valid_metrics(pred, y_valid)
             valid_score_cost += time.time() - _start
             # self.writer.add_scalar("Valid_accuracy_{}".format(config_id), metrics["val_Accuracy"], self.valid_epochs)
             self.writer.add_scalar("Valid_accuracy_{}_{}".format(config_id, configuration["lr"]), loss, self.valid_epochs)
@@ -146,7 +146,9 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
 
         # call the loader
 
-        self.gk.load_model_state(model, optim, config)
+        checkpoint = self.gk.load_model_state(model, optim, config)
+        if not checkpoint:
+            config_id = self.gk.add_config_to_store(config)
 
         # fitting the model with subsampled data
         start = time.time()
@@ -196,7 +198,7 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
         """
         raise NotImplementedError()
 
-    def train(self, model: nn.Module, criterion: nn.Module, optim: torch.optim.Optimizer,
+    def train(self, model: nn.Module, criterion: nn.Module, optim: torch.optim.Optimizer, config_id: int,
               lr_scheduler: torch.optim.lr_scheduler = None):
         """
         The training function as a pytorch implementation
@@ -207,12 +209,15 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
         criterion
             Loss function
         optim
-            optimizer
+            Optimizer
+        config_id
+            Internal ID of config, used for plotting
         lr_scheduler
             If Scheduler exists
         """
         num = 0
         train_score_cost = 0
+        loss_list = []
         for i, (X_train, y_train) in enumerate(self.train_dataloader):
             optim.zero_grad()
             pred = model(X_train)
@@ -221,21 +226,18 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
             optim.step()
 
             if i % 5 == 0:
+                loss_list.append(loss)
                 print("Batch {}; Loss: {}".format(i, loss))
 
             # Metric
             _start = time.time()
-            metrics = self.train_metrics(pred, y_train)
+            self.train_metrics(pred, y_train)
             train_score_cost += time.time() - _start
 
-            # self.writer.add_scalar("Train_accuracy_{}".format(config_id), metrics["train_Accuracy"], i)
+            self.writer.add_scalar("Train_loss_{}".format(config_id), loss, i)
             num += 1
 
         if lr_scheduler is not None:
             lr_scheduler.step()
 
-        # Valid Acc for the valid dataset
-        total_train_acc = self.train_metrics["Accuracy"].compute()
-        train_loss = 1 - total_train_acc
-
-        return train_score_cost, train_loss
+        return train_score_cost, loss_list
