@@ -1,3 +1,11 @@
+""" 
+
+This file was added from the HPOBench, created by Eggensperger et al. 2021 
+
+Source: https://github.com/automl/HPOBench
+Paper: https://openreview.net/forum?id=1k4rJYEwda-
+
+"""
 """ Base-class of all benchmarks """
 
 import abc
