@@ -7,7 +7,8 @@ from warmstarting.optimizers.random_search import random_search
 from warmstarting.config_space_model import ConfigSpaceModel
 
 def HPOLoop():
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    _device = "cuda" if torch.cuda.is_available() else "cpu"
+    device = torch.device(_device)
 
     seed = 10
     writer = SummaryWriter()
@@ -23,9 +24,9 @@ def HPOLoop():
 
     handler = DataHandler()
     handler.set_dataset()
-    train_dataloader, valid_dataloader = handler.get_train_and_val_set(batch_size=10, device=torch.device(device))
+    train_dataloader, valid_dataloader = handler.get_train_and_val_set(batch_size=10, device=device)
 
-    problem = DummyBench(train_dataloader, valid_dataloader, config, fidelity, writer, seed)
+    problem = DummyBench(train_dataloader, valid_dataloader, config, fidelity, device, writer, seed)
 
     random_search(problem, n_models=20, epochs=100, writer=writer)
 

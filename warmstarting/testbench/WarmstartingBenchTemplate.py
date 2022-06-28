@@ -8,8 +8,7 @@ from torch.utils.data import DataLoader
 from torchmetrics import Accuracy, F1Score, Precision, MetricCollection
 import ConfigSpace as CS
 
-from hpobench.abstract_benchmark import AbstractBenchmark
-from hpobench.util.rng_helper import get_rng
+from warmstarting.testbench.AbstractBenchmark import AbstractBenchmark
 
 from torch.utils.tensorboard import SummaryWriter
 from warmstarting.checkpoint_gatekeeper import CheckpointGatekeeper
@@ -21,6 +20,7 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
                  valid_dataloader: DataLoader,
                  configuration_space: CS.ConfigurationSpace,
                  fidelity_space: CS.ConfigurationSpace,
+                 device: torch.device,
                  writer: SummaryWriter,
                  rng: Union[np.random.RandomState, int, None] = None):
         """
@@ -31,6 +31,8 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
         else:
             self.seed = self.rng.randint(1, 10**6)
 
+        self.device = device
+
         super(AbstractBenchmark).__init__()
         self.train_dataloader = train_dataloader
         self.valid_dataloader = valid_dataloader
@@ -40,7 +42,10 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
         self._fidelity_space = fidelity_space
 
         # Metrics
-        metrics = MetricCollection([Accuracy(), F1Score(), Precision()])
+        metrics = MetricCollection([
+            Accuracy().to(self.device), 
+            F1Score().to(self.device), 
+            Precision().to(self.device)])
         self.train_metrics = metrics.clone(prefix='train_')
         self.valid_metrics = metrics.clone(prefix='val_')
 
@@ -79,7 +84,7 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
             self.valid_metrics(pred, y_valid)
             valid_score_cost += time.time() - _start
             # self.writer.add_scalar("Valid_accuracy_{}".format(config_id), metrics["val_Accuracy"], self.valid_epochs)
-            valid_loss_list.append(loss.detach().numpy())
+            valid_loss_list.append(loss.cpu().detach().numpy())
             self.valid_epochs += 1
         self.writer.add_scalar("Valid_accuracy_{}_{}".format(config_id, configuration["lr"]), np.mean(valid_loss_list), self.valid_epochs)
 
@@ -131,9 +136,7 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
         -------
 
         """
-        if rng is not None:
-            rng = get_rng(rng, self.rng)
-
+        
         # initializing model
         model = self.init_model(config, fidelity, rng)
         optim = self.init_optim(model.parameters(), config, fidelity, rng)
