@@ -133,5 +133,8 @@ dmypy.json
 # PyCharm
 .idea
 
-#plotting
+# Data
+datasets/
+runs/
+checkpoints/
 graphs/
