@@ -7,6 +7,7 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 from torchmetrics import Accuracy, F1Score, Precision, MetricCollection
 import ConfigSpace as CS
+from warmstarting.data_loader import DataHandler
 
 from warmstarting.testbench.AbstractBenchmark import AbstractBenchmark
 
@@ -16,8 +17,7 @@ from warmstarting.checkpoint_gatekeeper import CheckpointGatekeeper
 
 class WarmstartingBenchTemplate(AbstractBenchmark):
     def __init__(self,
-                 train_dataloader: DataLoader,
-                 valid_dataloader: DataLoader,
+                 data_handler: DataHandler,
                  configuration_space: CS.ConfigurationSpace,
                  fidelity_space: CS.ConfigurationSpace,
                  device: torch.device,
@@ -32,10 +32,8 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
             self.seed = self.rng.randint(1, 10**6)
 
         self.device = device
-
+        self.data_handler = data_handler
         super(AbstractBenchmark).__init__()
-        self.train_dataloader = train_dataloader
-        self.valid_dataloader = valid_dataloader
 
         # Observation and fidelity spaces
         self._configuration_space = configuration_space
@@ -148,6 +146,12 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
         checkpoint = self.gk.load_model_state(model, optim, config)
         if not checkpoint:
             config_id = self.gk.add_config_to_store(config)
+
+        if "data_subset_size" in fidelity and fidelity["data_subset_size"] < 1:
+            data_subset_size = fidelity["data_subset_size"]
+            self.train_dataloader, self.valid_dataloader = self.data_handler.get_train_and_val_set(batch_size=10, device=self.device, subset_size=data_subset_size)
+        else:
+            self.train_dataloader, self.valid_dataloader = self.data_handler.get_train_and_val_set(batch_size=10, device=self.device)
 
         # fitting the model with subsampled data
         start = time.time()

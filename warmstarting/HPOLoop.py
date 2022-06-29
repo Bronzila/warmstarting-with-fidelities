@@ -17,16 +17,17 @@ def HPOLoop():
     momentum_list = [0.1]
     optim_list = [optim.SGD, optim.Adam]
     epoch_list = [3, 10]
+    data_subset_list = [0.2, 1]
 
     config_space_model = ConfigSpaceModel(seed)
-    config_space_model.setup_config_space(lr_list, momentum_list, optim_list, epoch_list)
-    config, fidelity = config_space_model.get_config_spaces(['lr', 'optimizer'], ['epoch'])
+    config_space_model.setup_config_space(lr_list, momentum_list, optim_list, epoch_list, data_subset_list)
+    config, fidelity = config_space_model.get_config_spaces(["lr", "optimizer"], ["epoch", "data_subset_size"])
+
 
     handler = DataHandler()
-    handler.set_dataset()
-    train_dataloader, valid_dataloader = handler.get_train_and_val_set(batch_size=10, device=device)
+    handler.set_dataset(61) # iris
 
-    problem = DummyBench(train_dataloader, valid_dataloader, config, fidelity, device, writer, seed)
+    problem = DummyBench(handler, config, fidelity, device, writer, seed)
 
     random_search(problem, n_models=20)
 

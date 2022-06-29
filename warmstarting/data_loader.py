@@ -87,6 +87,7 @@ class DataHandler:
         shuffle_dataset: bool = True,
         batch_size: int = 64,
         seed: int = 42,
+        subset_size: float = 1.0,
         device:torch.device = torch.device('cuda')) -> Tuple[DataLoader, DataLoader]:
 
         """ Splits the dataset into X_train, y_train, X_val, y_val
@@ -98,6 +99,7 @@ class DataHandler:
         shuffle_dataset (bool): if data will be shuffled
         batch_size (int): batch size
         seed: (int): numpy seed
+        subset_size: (float): subset size
         device: (torch.device): device to run (cuda/cpu)
 
         Returns
@@ -114,6 +116,9 @@ class DataHandler:
         if validation_split <= 0 or validation_split >= 1:
             raise ValueError("validation_split must be between 0 and 1")
 
+        if subset_size < 0.2 or subset_size > 1:
+            raise ValueError("subset_size must be between 0.2 and 1")
+
         indices = list(range(len(self.X)))
         split = int(np.floor(validation_split * len(self.X)))
         if shuffle_dataset:
@@ -126,10 +131,35 @@ class DataHandler:
         self.X_val = torch.from_numpy(self.X[val_indices]).to(device)
         self.y_val = torch.from_numpy(self.y[val_indices]).to(device)
 
+        indices = list(range(0, int(len(self.X_train) * subset_size)))
+        
+
         training_dataset = TrainingSet(self.X_train, self.y_train)
+        sub_training_dataset = torch.utils.data.Subset(training_dataset, indices)
         train_dataloader = torch.utils.data.DataLoader(training_dataset, batch_size=batch_size)
 
-        val_data = TrainingSet(self.X_val, self.y_val)
-        valid_dataloader = torch.utils.data.DataLoader(val_data, batch_size=batch_size)
+        val_dataset = TrainingSet(self.X_val, self.y_val)
+        sub_val_dataset = torch.utils.data.Subset(val_dataset, indices)
+        valid_dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size)
 
         return train_dataloader, valid_dataloader
+
+if __name__ == "__main__":
+    import torchvision
+    import torch
+    from torch.utils.data import Dataset
+    from torchvision import datasets
+    from torchvision.transforms import ToTensor
+    
+
+    training_data = datasets.CIFAR10(
+        root="data",
+        # train=True,
+        # download=True,
+        # transform=ToTensor()
+    )
+
+    train_dataloader = torch.utils.data.DataLoader(training_data, batch_size=60)
+    
+    for data in train_dataloader:
+        print(data)

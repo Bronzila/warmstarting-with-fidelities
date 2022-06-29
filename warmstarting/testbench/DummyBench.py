@@ -12,20 +12,20 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
+from warmstarting.data_loader import DataHandler
 
 from warmstarting.testbench.WarmstartingBenchTemplate import WarmstartingBenchTemplate
 
 
 class DummyBench(WarmstartingBenchTemplate):
     def __init__(self,
-                 train_dataloader: DataLoader,
-                 valid_dataloader: DataLoader,
+                 data_handler: DataHandler,
                  configuration_space: CS.ConfigurationSpace,
                  fidelity_space: CS.ConfigurationSpace,
                  device: torch.device,
                  writer: SummaryWriter,
                  rng: Union[np.random.RandomState, int, None] = None,):
-        super(DummyBench, self).__init__(train_dataloader, valid_dataloader, configuration_space, fidelity_space, device, writer, rng)
+        super(DummyBench, self).__init__(data_handler, configuration_space, fidelity_space, device, writer, rng)
 
     def objective_function_test(self, configuration: Union[CS.Configuration, Dict],
                                 fidelity: Union[Dict, CS.Configuration, None] = None,
