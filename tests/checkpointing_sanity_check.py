@@ -56,6 +56,8 @@ if __name__ == '__main__':
     optimizer_checkpoint = torch.optim.Adam(model_checkpoint.parameters(), lr=0.001)
     optimizer_checkpoint.load_state_dict(optimizer_full_training.state_dict())
 
+    gatekeeper = CheckpointGatekeeper(path=".")
+
     loss_fn = nn.CrossEntropyLoss()
 
     EPOCHS = 100
@@ -89,10 +91,10 @@ if __name__ == '__main__':
         print("Training checkpoint training")
         if epoch % 10 == 0:
             print("Saving Checkpoint")
-            gatekeeper = CheckpointGatekeeper(path=".")
-            gatekeeper.save_model_state(model_checkpoint, optimizer_checkpoint, config)
+            fidelities = {'epoch': epoch}
+            gatekeeper.save_model_state(model_checkpoint, optimizer_checkpoint, config, None, fidelities)
             print("Loading Checkpoint")
-            model_checkpoint, optimizer_checkpoint, _ = gatekeeper.load_model_state(model_checkpoint, optimizer_checkpoint, config)
+            model_checkpoint, optimizer_checkpoint, _, _ = gatekeeper.load_model_state(model_checkpoint, optimizer_checkpoint, config)
 
         y_pred = model_checkpoint(X_train)
         loss = loss_fn(y_pred, y_train)

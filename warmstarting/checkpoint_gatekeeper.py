@@ -1,5 +1,6 @@
 import torch
 import os
+import re
 import ConfigSpace as CS
 
 from datetime import datetime
@@ -15,20 +16,30 @@ class CheckpointGatekeeper:
     ----------
     path : str = "./checkpoints"
         Defines base path, where checkpoints are saved
+
+    use_existing_folder : bool = False
+        If this option is active, parameter path will be used as model folder and no new folder will be created
     """
 
     def __init__(
             self,
-            path: str = "./checkpoints"
+            path: str = "./checkpoints",
+            use_existing_folder: bool = False
     ):
-        path = os.path.join(path, "run_%s" % datetime.now().strftime("%Y%m%d-%H%M%S"))
+        self.model_dir_prefix = "models_"
+        self.model_prefix = "model_"
+        self.subset_precision = 1e2
+        self.last_id = -1
+        self.config_store = dict()
         self.base_path = path
+
+        if use_existing_folder:
+            self.populate_store_from_disk()
+        else:
+            self.base_path = os.path.join(self.base_path, "run_%s" % datetime.now().strftime("%Y%m%d-%H%M%S"))
 
         if not os.path.exists(self.base_path):
             os.makedirs(self.base_path)
-
-        self.last_id = -1
-        self.config_store = dict()
 
     def check_config_saved(self, config: CS.Configuration):
         """ Checks whether the specified config has been saved before
@@ -48,11 +59,7 @@ class CheckpointGatekeeper:
             (invalid) id -1 is returned.
         """
         for id in self.config_store:
-            config_equal = True
-            for config_key in config.get_dictionary():
-                if config.get(config_key) != self.config_store[id].get(config_key):
-                    config_equal = False
-            if config_equal:
+            if self.config_store[id] == config:
                 return True, id
         return False, -1
 
@@ -74,7 +81,8 @@ class CheckpointGatekeeper:
         return self.last_id
 
     def save_model_state(self, model: torch.nn.Module, optimizer: torch.optim.Optimizer,
-                         config: CS.Configuration, lr_scheduler: torch.optim.lr_scheduler = None):
+                         config: CS.Configuration, lr_scheduler: torch.optim.lr_scheduler,
+                         fidelities: dict):
         """ Saves the model state to disk
 
         Saves the model, optimizer and scheduler state to the filesystem.
@@ -90,26 +98,37 @@ class CheckpointGatekeeper:
         config : CS.Configuration
             Config used for model, optimizer etc.
 
-        lr_scheduler : torch.optim.lr_scheduler = None
-            Scheduler of learning rate, if used
+        lr_scheduler : torch.optim.lr_scheduler
+            Scheduler of learning rate
 
         config : CS.Configuration
             The Configuration of the specific model
+
+        fidelities : dict(str, float/int)
+            The fidelities used for the model run
         """
         # check if config has already been saved
         exists, id = self.check_config_saved(config)
 
         if not exists:
             id = self.add_config_to_store(config)
+            os.makedirs(os.path.join(self.base_path, self.model_dir_prefix + str(id)))
 
         checkpoint = {
             'model': model.state_dict(),
             'optimizer': optimizer.state_dict(),
-            'lr_scheduler': lr_scheduler
+            'lr_scheduler': lr_scheduler,
+            'fidelity': fidelities,
+            'config': self.config_store[id]
         }
 
-        checkpoint_name = "model_" + str(id) + ".pth"
-        path = os.path.join(self.base_path, checkpoint_name)
+        fidelity_substring = ""
+        for k in sorted(fidelities):
+            val = fidelities[k] * self.subset_precision if k == "subset" else fidelities[k]
+            fidelity_substring += "_" + str(val)
+
+        checkpoint_name = self.model_prefix + str(id) + fidelity_substring + ".pth"
+        path = os.path.join(os.path.join(self.base_path, self.model_dir_prefix + str(id)), checkpoint_name)
 
         torch.save(checkpoint, path)
         return id
@@ -140,15 +159,40 @@ class CheckpointGatekeeper:
         if not exists:
             return None
 
-        checkpoint_name = "model_" + str(id) + ".pth"
+        checkpoint_dir = self.model_dir_prefix + str(id)
 
-        checkpoint = torch.load(os.path.join(self.base_path, checkpoint_name))
+        name_map = dict()
+        for filename in os.scandir(os.path.join(self.base_path, checkpoint_dir)):
+            if filename.is_file():
+                # ignore first number, since this is the model id
+                fidelities = list(map(int, re.findall("[0-9]+", filename.name)[1:]))
+                name_map[filename.name] = sum(fidelities)
+
+        # latest checkpoint has the highest sum of fidelities, since we are training iteratively
+        latest_checkpoint_name = max(name_map, key=name_map.get)
+
+        relative_checkpoint_path = os.path.join(checkpoint_dir, latest_checkpoint_name)
+        checkpoint = torch.load(os.path.join(self.base_path, relative_checkpoint_path))
 
         model.load_state_dict(checkpoint['model'])
         optimizer.load_state_dict(checkpoint['optimizer'])
         lr_scheduler = checkpoint['lr_scheduler']
+        fidelities = checkpoint["fidelity"]
 
-        return model, optimizer, lr_scheduler
+        return model, optimizer, lr_scheduler, fidelities
+
+    def populate_store_from_disk(self):
+        """ Populates the config_store from the specified base_path
+
+        """
+        for item in os.scandir(self.base_path):
+            if item.is_dir():
+                id = int(re.findall("[0-9]+", item.name)[0])
+                folder_path = os.path.join(self.base_path, item.name)
+                config_filename = next(os.scandir(folder_path)).name
+                config = torch.load(os.path.join(folder_path, config_filename))['config']
+                self.config_store[id] = config
+
 
 
 if __name__ == "__main__":
@@ -163,7 +207,7 @@ if __name__ == "__main__":
     optim = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=0.01)
     # lr_sched = torch.optim.lr_scheduler.LinearLR(optim)
 
-    test_keeper.save_model_state(model, optim, config)
+    test_keeper.save_model_state(model, optim, config, None, {'epoch': 10})
 
     optim.param_groups[0]['lr'] = 1
 
@@ -172,4 +216,4 @@ if __name__ == "__main__":
     assert optim.param_groups[0]['lr'] == 0.001
 
     config2 = cs.sample_configuration()
-    test_keeper.save_model_state(model, optim, config2)
+    test_keeper.save_model_state(model, optim, config2, None, {'epoch': 10})
