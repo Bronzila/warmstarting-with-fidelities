@@ -137,15 +137,16 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
         
         # initializing model
         model = self.init_model(config, fidelity, rng)
-        optim = self.init_optim(model.parameters(), config, fidelity, rng)
-
-        lr_sched = self.init_lr_sched(optim, config, fidelity, rng)
+        optimizer = self.init_optim(model.parameters(), config, fidelity, rng)
+        lr_sched = self.init_lr_sched(optimizer, config, fidelity, rng)
 
         # call the loader
-
-        checkpoint = self.gk.load_model_state(model, optim, config)
-        if not checkpoint:
-            config_id = self.gk.add_config_to_store(config)
+        model, optimizer, lr_scheduler, saved_fidelitiy = self.gk.load_model_state(model, optimizer, config)
+        # It it doesnt yet exist
+        if not model:
+            model = self.init_model(config, fidelity, rng)
+            optimizer = self.init_optim(model.parameters(), config, fidelity, rng)
+            lr_sched = self.init_lr_sched(optimizer, config, fidelity, rng)
 
         if "data_subset_size" in fidelity and fidelity["data_subset_size"] < 1:
             data_subset_size = fidelity["data_subset_size"]
@@ -155,10 +156,13 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
 
         # fitting the model with subsampled data
         start = time.time()
-        train_score_cost, train_loss = self.train(model, criterion, optim, lr_sched)
+        train_score_cost, train_loss = self.train(model, criterion, optimizer, lr_sched)
         model_fit_time = time.time() - start - train_score_cost
 
-        config_id = self.gk.save_model_state(model, optim, config, lr_sched)
+        if saved_fidelitiy is not None:
+            fidelity = self.add_total_fidelity(fidelity, saved_fidelitiy)
+
+        config_id = self.gk.save_model_state(model, optimizer, config, lr_sched, fidelity)
 
         return config_id, model, model_fit_time, train_loss, train_score_cost
 
@@ -240,3 +244,11 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
             lr_scheduler.step()
 
         return train_score_cost, loss_list
+
+    @staticmethod
+    def add_total_fidelity(current, saved):
+        """ This method adds every fidelity value from our saved fidelity space to our current one
+        """
+        for c, s in zip(current, saved):
+            c += s
+        return current
