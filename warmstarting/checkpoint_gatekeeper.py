@@ -82,7 +82,7 @@ class CheckpointGatekeeper:
 
     def save_model_state(self, model: torch.nn.Module, optimizer: torch.optim.Optimizer,
                          config: CS.Configuration, lr_scheduler: torch.optim.lr_scheduler,
-                         fidelities: dict):
+                         fidelities: CS.Configuration):
         """ Saves the model state to disk
 
         Saves the model, optimizer and scheduler state to the filesystem.
@@ -157,7 +157,7 @@ class CheckpointGatekeeper:
         """
         exists, id = self.check_config_saved(config)
         if not exists:
-            return None
+            return None, None, None, None
 
         checkpoint_dir = self.model_dir_prefix + str(id)
 
