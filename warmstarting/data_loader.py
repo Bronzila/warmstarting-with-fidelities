@@ -1,10 +1,20 @@
 from tokenize import String
 from typing import Tuple
+from pathlib import Path
 import os
 import openml
 import numpy as np
 import torch
 from torch.utils.data import DataLoader, WeightedRandomSampler, TensorDataset, Dataset
+import torchvision
+import torch
+from torch.utils.data import Dataset
+from torchvision import datasets
+from torchvision.transforms import ToTensor
+from torchvision.transforms import RandomCrop
+import torchvision.transforms as transforms
+
+
 
 
 
@@ -131,35 +141,123 @@ class DataHandler:
         self.X_val = torch.from_numpy(self.X[val_indices]).to(device)
         self.y_val = torch.from_numpy(self.y[val_indices]).to(device)
 
-        indices = list(range(0, int(len(self.X_train) * subset_size)))
-        
+        indices = list(range(0, int(len(self.X_train) * subset_size))) 
+        print(indices)
 
         training_dataset = TrainingSet(self.X_train, self.y_train)
         sub_training_dataset = torch.utils.data.Subset(training_dataset, indices)
-        train_dataloader = torch.utils.data.DataLoader(training_dataset, batch_size=batch_size)
+        train_dataloader = torch.utils.data.DataLoader(sub_training_dataset, batch_size=batch_size)
 
         val_dataset = TrainingSet(self.X_val, self.y_val)
         sub_val_dataset = torch.utils.data.Subset(val_dataset, indices)
-        valid_dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size)
+        valid_dataloader = torch.utils.data.DataLoader(sub_val_dataset, batch_size=batch_size)
 
         return train_dataloader, valid_dataloader
 
+class PyTorchDatasetManager():
+    """ Base Class for PyTorch datasets
+    """
+
+    def __init__(self):
+        self._save_to = 'datasets/torch'
+
+    def load(self):
+        """ Loads data from data directory as defined in
+        config_file.data_directory
+        """
+        raise NotImplementedError()
+
+    def get_train_and_val_set(self, device, subset_size, validation_split: float = 0.2, batch_size: int = 60):
+        """ Splits the data into train and validation sets and created the dataloaders.
+
+        Parameters
+        ----------
+            validation_split (float, optional): Ratio of the validation set
+            batch_size (int, optional): Batch size
+        
+        Returns
+        -------
+            train_dataloader (DataLoader): Train data loader
+            val_dataloader (DataLoader): Validation data loader
+        """
+        print("Loading the data...")
+        self._load()
+        size = len(self.dataset)
+        train_set, val_set = torch.utils.data.random_split(self.dataset, [int(size * (1 - validation_split)), int(size * validation_split)])
+        train_dataloader = torch.utils.data.DataLoader(train_set, batch_size=batch_size)
+        val_dataloader = torch.utils.data.DataLoader(val_set, batch_size=batch_size)
+
+
+        return train_dataloader, val_dataloader
+
+        
+class CIFAR10Data(PyTorchDatasetManager):
+    """ Class loading the Cifar10 data set. """
+
+    def __init__(self):
+        super(CIFAR10Data, self).__init__()
+
+    def _load(self, download: bool = True):
+        self.dataset = datasets.CIFAR10(
+            root=self._save_to,
+            train=True,
+            download=download,
+            transform=ToTensor()
+        )
+
+class CIFAR100Data(PyTorchDatasetManager):
+    """ Class loading the Cifar10 data set. """
+
+    def __init__(self):
+        super(CIFAR100Data, self).__init__()
+
+    def _load(self, download: bool = True):
+        self.dataset = datasets.CIFAR100(
+            root=self._save_to,
+            train=True,
+            download=download,
+            transform=ToTensor()
+        )
+
+class Country211Data(PyTorchDatasetManager):
+    """ Class loading the Country211 data set. """
+
+    def __init__(self):
+        super(Country211Data, self).__init__()
+
+    def _load(self, download: bool = True):
+        self.dataset = datasets.Country211(
+            root=self._save_to,
+            download=download,
+            # transform=
+            # target_transform=
+        )
+
+
+class EMNISTData(PyTorchDatasetManager):
+    """ Class loading the EMNIST data set. """
+
+    def __init__(self):
+        super(EMNISTData, self).__init__()
+
+    def _load(self, download: bool = True):
+        self.dataset = datasets.EMNIST(
+            root=self._save_to,
+            train=True,
+            download=download,
+            split="mnist",
+            transform=transforms.CenterCrop(10)
+            # target_transform=
+        )
+
+
 if __name__ == "__main__":
-    import torchvision
-    import torch
-    from torch.utils.data import Dataset
-    from torchvision import datasets
-    from torchvision.transforms import ToTensor
-    
 
-    training_data = datasets.CIFAR10(
-        root="data",
-        # train=True,
-        # download=True,
-        # transform=ToTensor()
-    )
+    manager = CIFAR10Data()
 
-    train_dataloader = torch.utils.data.DataLoader(training_data, batch_size=60)
+    train_dataloader, val_dataloader = manager.get_train_and_val_set(validation_split=0)
     
+    print(len(train_dataloader))
+    print(len(val_dataloader))
     for data in train_dataloader:
         print(data)
