@@ -70,8 +70,8 @@ class ConfigSpaceModel:
         momentum = CS.hyperparameters.CategoricalHyperparameter('momentum', choices=momentum_list)
         optimizer = CSH.CategoricalHyperparameter('optimizer', choices=optim_list)
         epoch = CSH.UniformIntegerHyperparameter('epoch', lower=epoch_list[0], upper=epoch_list[1])
-        data_subset_size = CSH.UniformFloatHyperparameter('data_subset_size', lower=data_subset_list[0], upper=data_subset_list[1])
-        self._config_space.add_hyperparameters([lr, momentum, optimizer, epoch, data_subset_size])
+        data_subset_ratio = CSH.UniformFloatHyperparameter('data_subset_ratio', lower=data_subset_list[0], upper=data_subset_list[1])
+        self._config_space.add_hyperparameters([lr, momentum, optimizer, epoch, data_subset_ratio])
 
         return self._config_space
 

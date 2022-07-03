@@ -13,7 +13,7 @@ from torchvision import datasets
 from torchvision.transforms import ToTensor
 from torchvision.transforms import RandomCrop
 import torchvision.transforms as transforms
-
+import random
 
 
 
@@ -97,8 +97,8 @@ class DataHandler:
         shuffle_dataset: bool = True,
         batch_size: int = 64,
         seed: int = 42,
-        subset_size: float = 1.0,
-        device:torch.device = torch.device('cuda')) -> Tuple[DataLoader, DataLoader]:
+        subset_ratio: float = 1.0,
+        device: torch.device = torch.device('cuda')) -> Tuple[DataLoader, DataLoader]:
 
         """ Splits the dataset into X_train, y_train, X_val, y_val
         and converts them to torch.Tensor
@@ -109,7 +109,7 @@ class DataHandler:
         shuffle_dataset (bool): if data will be shuffled
         batch_size (int): batch size
         seed: (int): numpy seed
-        subset_size: (float): subset size
+        subset_ratio: (float): subset ratio
         device: (torch.device): device to run (cuda/cpu)
 
         Returns
@@ -126,7 +126,7 @@ class DataHandler:
         if validation_split <= 0 or validation_split >= 1:
             raise ValueError("validation_split must be between 0 and 1")
 
-        if subset_size < 0.2 or subset_size > 1:
+        if subset_ratio < 0.2 or subset_ratio > 1:
             raise ValueError("subset_size must be between 0.2 and 1")
 
         indices = list(range(len(self.X)))
@@ -140,14 +140,15 @@ class DataHandler:
         self.y_train = torch.from_numpy(self.y[train_indices]).to(device)
         self.X_val = torch.from_numpy(self.X[val_indices]).to(device)
         self.y_val = torch.from_numpy(self.y[val_indices]).to(device)
-
-        indices = list(range(0, int(len(self.X_train) * subset_size))) 
-        print(indices)
-
+        
+        subset_size = int(subset_ratio * len(self.X_train))
+        indices = random.sample(range(0, len(self.X_train)), subset_size)
         training_dataset = TrainingSet(self.X_train, self.y_train)
         sub_training_dataset = torch.utils.data.Subset(training_dataset, indices)
         train_dataloader = torch.utils.data.DataLoader(sub_training_dataset, batch_size=batch_size)
 
+        subset_size = int(subset_ratio * len(self.X_val))
+        indices = random.sample(range(0, len(self.X_val)), subset_size)
         val_dataset = TrainingSet(self.X_val, self.y_val)
         sub_val_dataset = torch.utils.data.Subset(val_dataset, indices)
         valid_dataloader = torch.utils.data.DataLoader(sub_val_dataset, batch_size=batch_size)
@@ -167,7 +168,13 @@ class PyTorchDatasetManager():
         """
         raise NotImplementedError()
 
-    def get_train_and_val_set(self, device, subset_size, validation_split: float = 0.2, batch_size: int = 60):
+    def get_train_and_val_set(self,
+     validation_split: float = 0.2,
+     batch_size: int = 60,
+     seed: int = 42,
+     subset_ratio: float = 1.0,
+     shuffle_dataset: bool = True,
+     device: torch.device = torch.device('cuda')):
         """ Splits the data into train and validation sets and created the dataloaders.
 
         Parameters
@@ -182,11 +189,19 @@ class PyTorchDatasetManager():
         """
         print("Loading the data...")
         self._load()
+        torch.manual_seed(seed=seed)
         size = len(self.dataset)
         train_set, val_set = torch.utils.data.random_split(self.dataset, [int(size * (1 - validation_split)), int(size * validation_split)])
-        train_dataloader = torch.utils.data.DataLoader(train_set, batch_size=batch_size)
-        val_dataloader = torch.utils.data.DataLoader(val_set, batch_size=batch_size)
 
+        subset_size = int(subset_ratio * len(train_set))
+        indices = random.sample(range(0, len(train_set)), subset_size)
+        sub_training_dataset = torch.utils.data.Subset(train_set, indices)
+        train_dataloader = torch.utils.data.DataLoader(sub_training_dataset, batch_size=batch_size)
+        
+        subset_size = int(subset_ratio * len(val_set))
+        indices = random.sample(range(0, len(val_set)), subset_size)
+        sub_val_dataset = torch.utils.data.Subset(val_set, indices)
+        val_dataloader = torch.utils.data.DataLoader(sub_val_dataset, batch_size=batch_size)
 
         return train_dataloader, val_dataloader
 
@@ -249,15 +264,3 @@ class EMNISTData(PyTorchDatasetManager):
             transform=transforms.CenterCrop(10)
             # target_transform=
         )
-
-
-if __name__ == "__main__":
-
-    manager = CIFAR10Data()
-
-    train_dataloader, val_dataloader = manager.get_train_and_val_set(validation_split=0)
-    
-    print(len(train_dataloader))
-    print(len(val_dataloader))
-    for data in train_dataloader:
-        print(data)
