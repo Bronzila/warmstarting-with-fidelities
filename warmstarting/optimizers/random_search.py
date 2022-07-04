@@ -32,7 +32,6 @@ def random_search(
             epochs = sampled_fidelity["epoch"]
         print("Model {} trained with {} epochs".format(model, epochs))
 
-        for _ in range(epochs):
-            results = problem.objective_function(sampled_config, sampled_fidelity)
-            # results.append((model, sampled_config, val_errors))
+        results = problem.objective_function(sampled_config, sampled_fidelity)
+        # results.append((model, sampled_config, val_errors))
     # save_result('random_result', results)

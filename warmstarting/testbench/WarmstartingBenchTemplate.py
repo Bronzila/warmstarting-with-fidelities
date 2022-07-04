@@ -94,7 +94,7 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
             'train_loss': train_loss,
             'train_cost': train_score_cost,
             'val_loss': val_loss,
-            'val_cost': model_fit_time + valid_score_cost
+            'val_cost': valid_score_cost
         }
 
     def objective_function_test(self, configuration: CS.Configuration,
@@ -155,16 +155,21 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
             self.train_dataloader, self.valid_dataloader = self.data_handler.get_train_and_val_set(batch_size=10, device=self.device)
 
         # fitting the model with subsampled data
-        start = time.time()
-        train_score_cost, train_loss = self.train(model, criterion, optimizer, lr_sched)
-        model_fit_time = time.time() - start - train_score_cost
+        fit_times, train_losses, train_scores = [], [], []
+        for _ in range(fidelity['epoch']):
+            start = time.time()
+            train_score_cost, train_loss = self.train(model, criterion, optimizer, lr_sched)
+            fit_times.append(time.time() - start - train_score_cost)
+            train_losses.append(train_loss)
+            train_scores.append(train_score_cost)
 
+        fidelity = fidelity.get_dictionary()
         if saved_fidelitiy is not None:
             fidelity = self.add_total_fidelity(fidelity, saved_fidelitiy)
 
         config_id = self.gk.save_model_state(model, optimizer, config, lr_sched, fidelity)
 
-        return config_id, model, model_fit_time, train_loss, train_score_cost
+        return config_id, model, fit_times, train_losses, train_scores
 
     def init_model(self, config: Union[CS.Configuration, Dict],
                    fidelity: Union[CS.Configuration, Dict, None] = None,
@@ -250,5 +255,5 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
         """ This method adds every fidelity value from our saved fidelity space to our current one
         """
         for c, s in zip(current, saved):
-            c += s
+            current[c] += saved[s]
         return current
