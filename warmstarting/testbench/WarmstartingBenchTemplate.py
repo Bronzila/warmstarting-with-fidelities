@@ -148,8 +148,8 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
             optimizer = self.init_optim(model.parameters(), config, fidelity, rng)
             lr_sched = self.init_lr_sched(optimizer, config, fidelity, rng)
 
-        if saved_fidelitiy is not None and "data_subset_ratio" in saved_fidelitiy and saved_fidelitiy["data_subset_ratio"] < 1:
-            data_subset_ratio = saved_fidelitiy["data_subset_ratio"]
+        if saved_fidelitiy is not None and "data_subset_ratio" in saved_fidelitiy and (saved_fidelitiy["data_subset_ratio"] + fidelity["data_subset_ratio"] < 1):
+            data_subset_ratio = saved_fidelitiy["data_subset_ratio"] + fidelity["data_subset_ratio"]
             self.train_dataloader, self.valid_dataloader = self.data_handler.get_train_and_val_set(batch_size=10, device=self.device, subset_ratio=data_subset_ratio)
         else:
             self.train_dataloader, self.valid_dataloader = self.data_handler.get_train_and_val_set(batch_size=10, device=self.device)
