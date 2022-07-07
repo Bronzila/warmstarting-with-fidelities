@@ -4,11 +4,15 @@ experiment:
     lr_sched:
     criterion: CrossEntropyLoss
     batch_size: 10
-    n_models: 20
+    epoch_bounds: [3, 10]
+    subset_bounds: [0.2, 1]
+    use_checkpoints: True
+    shuffle: False
+    only_train_on_new: False
 fidelity:
-    epoch: [3, 10]
-    data_subsets:
+    epoch: [10]
+    data_subset_ratio: [0.2, 0.4, 0.6, 0.8, 1]
 configuration:
-    lr: [1e-2, 1e-3, 1e-4, 1e-5, 1e-6]
+    lr: [1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6]
     momentum: [0.1]
     optimizer: [SGD, Adam]

@@ -34,5 +34,6 @@ if __name__ == "__main__":
     lr = [float(x) for x in params["lr"]]
 
     HPOLoop(params["model"], lr, params["momentum"], optimizer,
-            params["lr_sched"], criterion, params["epoch"],
-            config_space, fidelity_space, params["batch_size"], params["n_models"])
+            params["lr_sched"], criterion, params["epoch_bounds"], params["subset_bounds"],
+            config_space, fidelity_space, params["epoch"], params["data_subset_ratio"],
+            params["use_checkpoints"], params["shuffle"], params["only_train_on_new"], params["dataset_id"])
