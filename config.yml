@@ -1,0 +1,14 @@
+experiment:
+    dataset: IRIS
+    model: FF
+    lr_sched:
+    criterion: CrossEntropyLoss
+    batch_size: 10
+    n_models: 20
+fidelity:
+    epoch: [3, 10]
+    data_subsets:
+configuration:
+    lr: [1e-2, 1e-3, 1e-4, 1e-5, 1e-6]
+    momentum: [0.1]
+    optimizer: [SGD, Adam]
