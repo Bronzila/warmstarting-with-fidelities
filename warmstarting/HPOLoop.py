@@ -29,17 +29,17 @@ def HPOLoop(
     seed = 10
     writer = SummaryWriter()
 
+    data_subset_list = [0.2, 1]
     config_space_model = ConfigSpaceModel(seed)
-    config_space_model.setup_config_space(lr, momentum, optimizer, epoch)
+    config_space_model.setup_config_space(lr, momentum, optimizer, epoch, data_subset_list)
     config, fidelity = config_space_model.get_config_spaces(config_space, fidelity_space)
 
     handler = DataHandler()
-    handler.set_dataset(dataset_id)
-    train_dataloader, valid_dataloader = handler.get_train_and_val_set(batch_size=batch_size, device=device)
+    handler.set_dataset(61) # iris
 
-    problem = DummyBench(train_dataloader, valid_dataloader, config, fidelity, model_type, criterion, device, writer, seed)
+    problem = DummyBench(handler, config, fidelity, device, writer, rng=seed, use_checkpoints=True)
 
-    random_search(problem, n_models=n_models)
+    random_search(problem, subset_ratios=[0.2, 0.4, 0.6, 0.8, 1], epochs=[10])
 
 
 if __name__ == "__main__":

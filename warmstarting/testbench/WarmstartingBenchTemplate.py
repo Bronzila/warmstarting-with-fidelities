@@ -7,6 +7,7 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 from torchmetrics import Accuracy, F1Score, Precision, MetricCollection
 import ConfigSpace as CS
+from warmstarting.data_loader import DataHandler
 
 from warmstarting.testbench.AbstractBenchmark import AbstractBenchmark
 
@@ -16,12 +17,14 @@ from warmstarting.checkpoint_gatekeeper import CheckpointGatekeeper
 
 class WarmstartingBenchTemplate(AbstractBenchmark):
     def __init__(self,
-                 train_dataloader: DataLoader,
-                 valid_dataloader: DataLoader,
+                 data_handler: DataHandler,
                  configuration_space: CS.ConfigurationSpace,
                  fidelity_space: CS.ConfigurationSpace,
                  device: torch.device,
                  writer: SummaryWriter,
+                 only_new: bool = False,
+                 shuffle: bool = False,
+                 use_checkpoints: bool = True,
                  rng: Union[np.random.RandomState, int, None] = None):
         """
         This class is a base class for implementing warm starting for HPO
@@ -32,10 +35,8 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
             self.seed = self.rng.randint(1, 10**6)
 
         self.device = device
-
+        self.data_handler = data_handler
         super(AbstractBenchmark).__init__()
-        self.train_dataloader = train_dataloader
-        self.valid_dataloader = valid_dataloader
 
         # Observation and fidelity spaces
         self._configuration_space = configuration_space
@@ -52,6 +53,10 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
         self.writer = writer
         self.gk = CheckpointGatekeeper()
         self.valid_epochs = 0
+
+        self.only_train_on_new_data = only_new
+        self.shuffle_subset = shuffle
+        self.use_checkpoints = use_checkpoints
 
     def objective_function(self, configuration: CS.Configuration,
                            fidelity: Union[CS.Configuration, None] = None,
@@ -96,7 +101,7 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
             'train_loss': train_loss,
             'train_cost': train_score_cost,
             'val_loss': val_loss,
-            'val_cost': model_fit_time + valid_score_cost
+            'val_cost': valid_score_cost
         }
 
     def objective_function_test(self, configuration: CS.Configuration,
@@ -143,24 +148,50 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
         lr_sched = self.init_lr_sched(optimizer, config, fidelity, rng)
 
         # call the loader
-        model, optimizer, lr_scheduler, saved_fidelitiy = self.gk.load_model_state(model, optimizer, config)
+        saved_fidelitiy = None
+        if self.use_checkpoints:
+            model, optimizer, lr_scheduler, saved_fidelitiy = self.gk.load_model_state(model, optimizer, config)
+
         # It it doesnt yet exist
         if not model:
             model = self.init_model(config, fidelity, rng)
             optimizer = self.init_optim(model.parameters(), config, fidelity, rng)
             lr_sched = self.init_lr_sched(optimizer, config, fidelity, rng)
 
-        # fitting the model with subsampled data
-        start = time.time()
-        train_score_cost, train_loss = self.train(model, criterion, optimizer, lr_sched)
-        model_fit_time = time.time() - start - train_score_cost
+        if "data_subset_ratio" in fidelity:
+            old_ratio = 0
+            if saved_fidelitiy is not None:
+                old_ratio = saved_fidelitiy["data_subset_ratio"]
+            new_ratio = fidelity["data_subset_ratio"]
+            self.train_dataloader, self.valid_dataloader = \
+                self.data_handler.get_train_and_val_set(batch_size=10, device=self.device,
+                                                        shuffle_subset=self.shuffle_subset,
+                                                        only_new_data=self.only_train_on_new_data,
+                                                        old_ratio=old_ratio, new_ratio=new_ratio)
+        else:
+            self.train_dataloader, self.valid_dataloader = \
+                self.data_handler.get_train_and_val_set(batch_size=10, device=self.device,
+                                                        shuffle_subset=self.shuffle_subset,
+                                                        only_new_data=self.only_train_on_new_data)
 
+        # fitting the model with subsampled data
+        fit_times, train_losses, train_scores = [], [], []
+        for _ in range(fidelity['epoch']):
+            start = time.time()
+            train_score_cost, train_loss = self.train(model, criterion, optimizer, lr_sched)
+            fit_times.append(time.time() - start - train_score_cost)
+            train_losses.append(train_loss)
+            train_scores.append(train_score_cost)
+
+        fidelity = fidelity.get_dictionary()
         if saved_fidelitiy is not None:
+            # add difference to fidelity dict for proper updating
+            fidelity["data_subset_ratio"] = fidelity["data_subset_ratio"] - saved_fidelitiy["data_subset_ratio"]
             fidelity = self.add_total_fidelity(fidelity, saved_fidelitiy)
 
         config_id = self.gk.save_model_state(model, optimizer, config, lr_sched, fidelity)
 
-        return config_id, model, model_fit_time, train_loss, train_score_cost
+        return config_id, model, fit_times, train_losses, train_scores
 
     def init_model(self, config: Union[CS.Configuration, Dict],
                    fidelity: Union[CS.Configuration, Dict, None] = None,
@@ -245,6 +276,6 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
     def add_total_fidelity(current, saved):
         """ This method adds every fidelity value from our saved fidelity space to our current one
         """
-        for c, s in zip(current, saved):
-            c += s
+        for c, s in zip(sorted(current), sorted(saved)):
+            current[c] += saved[s]
         return current

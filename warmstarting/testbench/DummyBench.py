@@ -12,22 +12,25 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
+from warmstarting.data_loader import DataHandler
 
 from warmstarting.testbench.WarmstartingBenchTemplate import WarmstartingBenchTemplate
 
 
 class DummyBench(WarmstartingBenchTemplate):
     def __init__(self,
-                 train_dataloader: DataLoader,
-                 valid_dataloader: DataLoader,
+                 data_handler: DataHandler,
                  configuration_space: CS.ConfigurationSpace,
                  fidelity_space: CS.ConfigurationSpace,
                  model_type: str,
                  criterion: torch.nn.Module,
                  device: torch.device,
                  writer: SummaryWriter,
+                 only_new: bool = False,
+                 shuffle: bool = False,
+                 use_checkpoints: bool = True,
                  rng: Union[np.random.RandomState, int, None] = None,):
-        super(DummyBench, self).__init__(train_dataloader, valid_dataloader, configuration_space, fidelity_space, device, writer, rng)
+        super(DummyBench, self).__init__(data_handler, configuration_space, fidelity_space, device, writer, only_new, shuffle, use_checkpoints, rng)
         self.model_type = model_type
         self.criterion = criterion
 

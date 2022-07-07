@@ -5,3 +5,5 @@ matplotlib~=3.5.2
 numpy~=1.18.2
 torchmetrics~=0.9.1
 PyYAML~=6.0
+tensorboard
+torchvision

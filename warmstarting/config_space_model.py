@@ -22,7 +22,8 @@ class ConfigSpaceModel:
             lr_list: List[float],
             momentum_list: List[float],
             optim_list: List[optim.Optimizer],
-            epoch_list: List[int]) -> CS.ConfigurationSpace:
+            epoch_list: List[int],
+            data_subset_list: List[float]) -> CS.ConfigurationSpace:
 
         """ Defines a conditional hyperparameter search-space.
         Parameters
@@ -43,6 +44,9 @@ class ConfigSpaceModel:
             Must contain maximum 2 elements.
             epoch_list[0] must be > epoch_list[1]
 
+        data_subset_list: List
+            list that has the minimum and maximum of data subset percentage
+
         ----------
         :return: ConfigurationSpace ("lr", "momentum", "optimizer", "epoch")
         """
@@ -58,12 +62,16 @@ class ConfigSpaceModel:
         if not isinstance(epoch_list, list):
             raise ValueError("setup_config_space: [epoch_list] must be a list")
 
+        if not isinstance(data_subset_list, list):
+            raise ValueError("setup_config_space: [epoch_list] must be a list")
+
         self._config_space = CS.ConfigurationSpace(seed=self.seed)
         lr = CS.hyperparameters.CategoricalHyperparameter('lr', choices=lr_list)
         momentum = CS.hyperparameters.CategoricalHyperparameter('momentum', choices=momentum_list)
         optimizer = CSH.CategoricalHyperparameter('optimizer', choices=optim_list)
         epoch = CSH.UniformIntegerHyperparameter('epoch', lower=epoch_list[0], upper=epoch_list[1])
-        self._config_space.add_hyperparameters([lr, momentum, optimizer, epoch])
+        data_subset_ratio = CSH.UniformFloatHyperparameter('data_subset_ratio', lower=data_subset_list[0], upper=data_subset_list[1])
+        self._config_space.add_hyperparameters([lr, momentum, optimizer, epoch, data_subset_ratio])
 
         return self._config_space
 
