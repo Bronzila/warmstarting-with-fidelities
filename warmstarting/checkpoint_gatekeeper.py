@@ -82,7 +82,7 @@ class CheckpointGatekeeper:
 
     def save_model_state(self, model: torch.nn.Module, optimizer: torch.optim.Optimizer,
                          config: CS.Configuration, lr_scheduler: torch.optim.lr_scheduler,
-                         fidelities: CS.Configuration):
+                         fidelities: dict):
         """ Saves the model state to disk
 
         Saves the model, optimizer and scheduler state to the filesystem.
@@ -124,7 +124,7 @@ class CheckpointGatekeeper:
 
         fidelity_substring = ""
         for k in sorted(fidelities):
-            val = fidelities[k] * self.subset_precision if k == "subset" else fidelities[k]
+            val = int(fidelities[k] * self.subset_precision) if k == "data_subset_ratio" else fidelities[k]
             fidelity_substring += "_" + str(val)
 
         checkpoint_name = self.model_prefix + str(id) + fidelity_substring + ".pth"

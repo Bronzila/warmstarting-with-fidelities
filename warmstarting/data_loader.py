@@ -97,12 +97,11 @@ class DataHandler:
         shuffle_dataset: bool = True,
         batch_size: int = 64,
         seed: int = 42,
-        subset_ratio: float = 1.0,
-        old_percentage: float = 0.2,
-        new_percentage: float = 0.4,
-        shuffle_subset: bool = True,
-        only_new_data: bool = True,
-        device: torch.device = torch.device('cuda')) -> Tuple[DataLoader, DataLoader]:
+        old_ratio: float = 0,
+        new_ratio: float = 1,
+        shuffle_subset: bool = False,
+        only_new_data: bool = False,
+        device: torch.device = torch.device('cpu')) -> Tuple[DataLoader, DataLoader]:
 
         """ Splits the dataset into X_train, y_train, X_val, y_val
         and converts them to torch.Tensor
@@ -130,9 +129,6 @@ class DataHandler:
         if validation_split <= 0 or validation_split >= 1:
             raise ValueError("validation_split must be between 0 and 1")
 
-        if subset_ratio < 0.2 or subset_ratio > 1:
-            raise ValueError("subset_size must be between 0.2 and 1")
-
         indices = list(range(len(self.X)))
         split = int(np.floor(validation_split * len(self.X)))
         if shuffle_dataset:
@@ -147,33 +143,32 @@ class DataHandler:
         
         random.seed(seed)
 
-        if only_new_data == True and shuffle_subset == True:
-            old_subset_size = int(old_percentage * len(self.X_train))
-            old_indices = random.sample(range(0, len(self.X_train)), old_subset_size)
-            total_indices = list(range(0, len(self.X_train)))
-            diff_indices = list(set(total_indices)^set(old_indices))
-            new_subset_size = int(new_percentage * len(diff_indices))
+        if only_new_data and shuffle_subset:
+            old_subset_size = int(old_ratio * len(self.X_train))
+            old_indices = random.sample(range(len(self.X_train)), old_subset_size)
+            total_indices = list(range(len(self.X_train)))
+            diff_indices = list(set(total_indices) ^ set(old_indices))
+            new_subset_size = int(new_ratio * len(diff_indices))
             final_indices = random.sample(diff_indices, new_subset_size)
 
-        elif only_new_data == False and shuffle_subset == False:
-            subset_size = int(new_percentage * len(self.X_train))
-            indices = list(range(0, subset_size))
+        elif not only_new_data and not shuffle_subset:
+            subset_size = int(new_ratio * len(self.X_train))
+            final_indices = list(range(subset_size))
        
-        elif only_new_data == True and shuffle_subset == False:
-            start = int(old_percentage * len(self.X_train))
-            end = int(new_percentage * len(self.X_train))
+        elif only_new_data and not shuffle_subset:
+            start = int(old_ratio * len(self.X_train))
+            end = int(new_ratio * len(self.X_train))
             final_indices = list(range(start, end))
         else:
-            subset_size = int(new_percentage * len(self.X_train))
-            final_indices = random.sample(range(0, len(self.X_train)), subset_size)
+            subset_size = int(new_ratio * len(self.X_train))
+            final_indices = random.sample(range(len(self.X_train)), subset_size)
      
         training_dataset = TrainingSet(self.X_train, self.y_train)
         sub_training_dataset = torch.utils.data.Subset(training_dataset, final_indices)
         train_dataloader = torch.utils.data.DataLoader(sub_training_dataset, batch_size=batch_size)
 
         val_dataset = TrainingSet(self.X_val, self.y_val)
-        sub_val_dataset = torch.utils.data.Subset(val_dataset, final_indices)
-        valid_dataloader = torch.utils.data.DataLoader(sub_val_dataset, batch_size=batch_size)
+        valid_dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size)
 
         return train_dataloader, valid_dataloader
 

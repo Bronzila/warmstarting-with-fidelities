@@ -22,6 +22,8 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
                  fidelity_space: CS.ConfigurationSpace,
                  device: torch.device,
                  writer: SummaryWriter,
+                 only_new: bool = False,
+                 shuffle: bool = False,
                  rng: Union[np.random.RandomState, int, None] = None):
         """
         This class is a base class for implementing warm starting for HPO
@@ -50,6 +52,9 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
         self.writer = writer
         self.gk = CheckpointGatekeeper()
         self.valid_epochs = 0
+
+        self.only_train_on_new_data = only_new
+        self.shuffle_subset = shuffle
 
     def objective_function(self, configuration: CS.Configuration,
                            fidelity: Union[CS.Configuration, None] = None,
@@ -148,11 +153,21 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
             optimizer = self.init_optim(model.parameters(), config, fidelity, rng)
             lr_sched = self.init_lr_sched(optimizer, config, fidelity, rng)
 
-        if saved_fidelitiy is not None and "data_subset_ratio" in saved_fidelitiy and (saved_fidelitiy["data_subset_ratio"] + fidelity["data_subset_ratio"] < 1):
-            data_subset_ratio = saved_fidelitiy["data_subset_ratio"] + fidelity["data_subset_ratio"]
-            self.train_dataloader, self.valid_dataloader = self.data_handler.get_train_and_val_set(batch_size=10, device=self.device, subset_ratio=data_subset_ratio)
+        if "data_subset_ratio" in fidelity:
+            old_ratio = 0
+            if saved_fidelitiy is not None:
+                old_ratio = saved_fidelitiy["data_subset_ratio"]
+            new_ratio = fidelity["data_subset_ratio"]
+            self.train_dataloader, self.valid_dataloader = \
+                self.data_handler.get_train_and_val_set(batch_size=10, device=self.device,
+                                                        shuffle_subset=self.shuffle_subset,
+                                                        only_new_data=self.only_train_on_new_data,
+                                                        old_ratio=old_ratio, new_ratio=new_ratio)
         else:
-            self.train_dataloader, self.valid_dataloader = self.data_handler.get_train_and_val_set(batch_size=10, device=self.device)
+            self.train_dataloader, self.valid_dataloader = \
+                self.data_handler.get_train_and_val_set(batch_size=10, device=self.device,
+                                                        shuffle_subset=self.shuffle_subset,
+                                                        only_new_data=self.only_train_on_new_data)
 
         # fitting the model with subsampled data
         fit_times, train_losses, train_scores = [], [], []
@@ -165,6 +180,8 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
 
         fidelity = fidelity.get_dictionary()
         if saved_fidelitiy is not None:
+            # add difference to fidelity dict for proper updating
+            fidelity["data_subset_ratio"] = fidelity["data_subset_ratio"] - saved_fidelitiy["data_subset_ratio"]
             fidelity = self.add_total_fidelity(fidelity, saved_fidelitiy)
 
         config_id = self.gk.save_model_state(model, optimizer, config, lr_sched, fidelity)
@@ -254,6 +271,6 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
     def add_total_fidelity(current, saved):
         """ This method adds every fidelity value from our saved fidelity space to our current one
         """
-        for c, s in zip(current, saved):
+        for c, s in zip(sorted(current), sorted(saved)):
             current[c] += saved[s]
         return current

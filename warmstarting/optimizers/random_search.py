@@ -1,3 +1,4 @@
+import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 from warmstarting.testbench import WarmstartingBenchTemplate
 
@@ -27,6 +28,7 @@ def random_search(
     for model in range(n_models):
         sampled_config = cs.sample_configuration()
         sampled_fidelity = fs.sample_configuration()
+        sampled_fidelity["data_subset_ratio"] = np.random.choice([0.2, 0.4, 0.6, 0.8])
 
         if epochs == None:
             epochs = sampled_fidelity["epoch"]

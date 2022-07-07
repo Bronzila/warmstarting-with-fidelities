@@ -21,15 +21,15 @@ def HPOLoop():
 
     config_space_model = ConfigSpaceModel(seed)
     config_space_model.setup_config_space(lr_list, momentum_list, optim_list, epoch_list, data_subset_list)
-    config, fidelity = config_space_model.get_config_spaces(["lr", "optimizer"], ["epoch", "data_subset_size"])
+    config, fidelity = config_space_model.get_config_spaces(["lr", "optimizer"], ["epoch", "data_subset_ratio"])
 
 
     handler = DataHandler()
     handler.set_dataset(61) # iris
 
-    problem = DummyBench(handler, config, fidelity, device, writer, seed)
+    problem = DummyBench(handler, config, fidelity, device, writer, rng=seed, only_new=False, shuffle=True)
 
-    random_search(problem, n_models=20)
+    random_search(problem, n_models=100)
 
 
 if __name__ == "__main__":
