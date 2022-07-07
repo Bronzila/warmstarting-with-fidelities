@@ -13,7 +13,7 @@ def HPOLoop():
     seed = 10
     writer = SummaryWriter()
 
-    lr_list = [1e-2, 1e-3, 1e-4, 1e-5, 1e-6]
+    lr_list = [1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6]
     momentum_list = [0.1]
     optim_list = [optim.SGD, optim.Adam]
     epoch_list = [3, 10]
@@ -21,15 +21,15 @@ def HPOLoop():
 
     config_space_model = ConfigSpaceModel(seed)
     config_space_model.setup_config_space(lr_list, momentum_list, optim_list, epoch_list, data_subset_list)
-    config, fidelity = config_space_model.get_config_spaces(["lr", "optimizer"], ["epoch", "data_subset_ratio"])
+    config, fidelity = config_space_model.get_config_spaces(["lr", "optimizer", "momentum"], ["epoch", "data_subset_ratio"])
 
 
     handler = DataHandler()
     handler.set_dataset(61) # iris
 
-    problem = DummyBench(handler, config, fidelity, device, writer, rng=seed)
+    problem = DummyBench(handler, config, fidelity, device, writer, rng=seed, use_checkpoints=True)
 
-    random_search(problem, n_models=20)
+    random_search(problem, subset_ratios=[0.2, 0.4, 0.6, 0.8, 1], epochs=[10])
 
 
 if __name__ == "__main__":
