@@ -24,6 +24,7 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
                  writer: SummaryWriter,
                  only_new: bool = False,
                  shuffle: bool = False,
+                 use_checkpoints: bool = True,
                  rng: Union[np.random.RandomState, int, None] = None):
         """
         This class is a base class for implementing warm starting for HPO
@@ -55,6 +56,7 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
 
         self.only_train_on_new_data = only_new
         self.shuffle_subset = shuffle
+        self.use_checkpoints = use_checkpoints
 
     def objective_function(self, configuration: CS.Configuration,
                            fidelity: Union[CS.Configuration, None] = None,
@@ -146,7 +148,10 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
         lr_sched = self.init_lr_sched(optimizer, config, fidelity, rng)
 
         # call the loader
-        model, optimizer, lr_scheduler, saved_fidelitiy = self.gk.load_model_state(model, optimizer, config)
+        saved_fidelitiy = None
+        if self.use_checkpoints:
+            model, optimizer, lr_scheduler, saved_fidelitiy = self.gk.load_model_state(model, optimizer, config)
+
         # It it doesnt yet exist
         if not model:
             model = self.init_model(config, fidelity, rng)

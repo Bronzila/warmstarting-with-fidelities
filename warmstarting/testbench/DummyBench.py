@@ -26,8 +26,9 @@ class DummyBench(WarmstartingBenchTemplate):
                  writer: SummaryWriter,
                  only_new: bool = False,
                  shuffle: bool = False,
+                 use_checkpoints: bool = True,
                  rng: Union[np.random.RandomState, int, None] = None,):
-        super(DummyBench, self).__init__(data_handler, configuration_space, fidelity_space, device, writer, only_new, shuffle, rng)
+        super(DummyBench, self).__init__(data_handler, configuration_space, fidelity_space, device, writer, only_new, shuffle, use_checkpoints, rng)
 
     def objective_function_test(self, configuration: Union[CS.Configuration, Dict],
                                 fidelity: Union[Dict, CS.Configuration, None] = None,

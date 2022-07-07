@@ -27,9 +27,9 @@ def HPOLoop():
     handler = DataHandler()
     handler.set_dataset(61) # iris
 
-    problem = DummyBench(handler, config, fidelity, device, writer, rng=seed, only_new=False, shuffle=True)
+    problem = DummyBench(handler, config, fidelity, device, writer, rng=seed)
 
-    random_search(problem, n_models=100)
+    random_search(problem, n_models=20)
 
 
 if __name__ == "__main__":
