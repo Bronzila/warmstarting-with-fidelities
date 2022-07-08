@@ -24,7 +24,7 @@ def visualize_data_epoch_grid(performance: np.ndarray, epochs: np.ndarray, data_
     """
     norm = Normalize(np.min(performance), np.max(performance))
     for model in range(performance.shape[0]):
-        plt.scatter(data_subsets[model], epochs[model], c=performance[model], cmap="inferno", norm=norm)
+        plt.scatter(epochs[model], data_subsets[model], c=performance[model], cmap="inferno", norm=norm)
         plt.title("Model with lr={}".format(configs[model]["lr"]))
         plt.xlabel("Number of Epochs"), plt.ylabel("Data Subset Ratio")
         plt.colorbar()
@@ -50,6 +50,30 @@ def visualize_performance_time(performance: np.ndarray, time: np.ndarray, config
         label = json.dumps(configs[model])
         plt.plot(time[model][0], performance[model][0], label=label)
     plt.xlabel("Training Time"),  plt.ylabel("Validation Performance")
+    plt.title(title)
+    plt.legend(fontsize=6)
+    plt.show()
+
+
+def visualize_performance_subset(performance: np.ndarray, subset: np.ndarray, configs, title: str):
+    """
+    validation performance - subset size
+
+    Parameters
+    ----------
+    performance
+        validation performance
+    subset
+        percentage of data used
+    configs
+        model configurations
+    title
+        title of the graph
+    """
+    for model in range(performance.shape[0]):
+        label = json.dumps(configs[model])
+        plt.plot(subset[model][0], performance[model][0], label=label)
+    plt.xlabel("Data Subset Ratio"),  plt.ylabel("Validation Performance")
     plt.title(title)
     plt.legend(fontsize=6)
     plt.show()
