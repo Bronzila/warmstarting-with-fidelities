@@ -85,13 +85,13 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
             _start = time.time()
             pred = model(X_valid)
             # Valid Acc for one data point
-            loss = criterion(pred, y_valid)
+            loss = criterion(pred, y_valid.long())
             self.valid_metrics(pred, y_valid)
             valid_score_cost += time.time() - _start
             # self.writer.add_scalar("Valid_accuracy_{}".format(config_id), metrics["val_Accuracy"], self.valid_epochs)
             valid_loss_list.append(loss.cpu().detach().numpy())
             self.valid_epochs += 1
-        self.writer.add_scalar("Valid_accuracy_{}_{}".format(config_id, configuration["lr"]), np.mean(valid_loss_list), self.valid_epochs)
+        self.writer.add_scalar("Valid_loss_{}_{}".format(config_id, configuration["lr"]), np.mean(valid_loss_list), self.valid_epochs)
 
         # Valid Acc for the valid dataset
         total_valid_acc = self.valid_metrics["Accuracy"].compute()
@@ -100,7 +100,7 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
         return {
             'train_loss': train_loss,
             'train_cost': train_score_cost,
-            'val_loss': val_loss,
+            'val_loss': np.mean(valid_loss_list),
             'val_cost': valid_score_cost
         }
 
@@ -254,7 +254,7 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
         for i, (X_train, y_train) in enumerate(self.train_dataloader):
             optim.zero_grad()
             pred = model(X_train)
-            loss = criterion(pred, y_train)
+            loss = criterion(pred, y_train.long())
             loss.backward()
             optim.step()
 
