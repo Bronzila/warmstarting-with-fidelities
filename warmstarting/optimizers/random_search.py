@@ -1,9 +1,8 @@
 import ConfigSpace
 import numpy as np
-from torch.utils.tensorboard import SummaryWriter
 from warmstarting.testbench import WarmstartingBenchTemplate
 from warmstarting.fixed_configuration import load_configurations
-
+from warmstarting.utils.serialization import serialize_results
 
 def random_search(
         problem: WarmstartingBenchTemplate,
@@ -28,13 +27,31 @@ def random_search(
 
     configs = load_configurations(cs)
 
-    for config in configs:
-        for epoch_step in epochs:
-            for subset_step in subset_ratios:
+    performance_data = np.zeros((len(configs), len(epochs), len(subset_ratios)))
+    time_data = np.zeros((len(configs), len(epochs), len(subset_ratios)))
+    epoch_list = np.zeros((len(configs), len(epochs), len(subset_ratios)))
+    subset_list = np.zeros((len(configs), len(epochs), len(subset_ratios)))
+
+    for i, config in enumerate(configs):
+        for x, epoch_step in enumerate(epochs):
+            for y, subset_step in enumerate(subset_ratios):
                 fidelity = ConfigSpace.Configuration(fs, values={
                     "epoch": epoch_step,
                     "data_subset_ratio": subset_step
                 })
                 results = problem.objective_function(config, fidelity)
-        # results.append((model, sampled_config, val_errors))
-    # save_result('random_result', results)
+                performance_data[i, x, y] = results['val_loss']
+                epoch_list[i, x, y] = epoch_step
+                subset_list[i, x, y] = subset_step
+                time_data[i, x, y] = np.mean(results['train_cost'])
+
+    score = {
+        "configs": [],
+        "performance": performance_data.tolist(),
+        "time": time_data.tolist(),
+        "epochs": epoch_list.tolist(),
+        "subsets": subset_list.tolist(),
+    }
+
+    serialize_results(score, configs)
+
