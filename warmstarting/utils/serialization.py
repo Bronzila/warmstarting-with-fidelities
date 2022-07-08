@@ -34,7 +34,8 @@ def serialize_results(score: Dict[str, Union[list, object]],
         os.makedirs(base_path)
 
     if file_name is None:
-        file_name = os.path.join(base_path, "%s" % datetime.now().strftime("%Y%m%d-%H%M%S"))
+        file_name = "%s" % datetime.now().strftime("%Y%m%d-%H%M%S")
+    file_path = os.path.join(base_path, file_name)
 
     # Make configuration object serializable for json
     for c in configs:
@@ -45,7 +46,7 @@ def serialize_results(score: Dict[str, Union[list, object]],
             configuration[o] = configuration[o].__name__
         score["configs"].append(configuration)
 
-    with open(file_name, 'w') as f:
+    with open(file_path, 'w') as f:
         json.dump(score, f)
 
 
