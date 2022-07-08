@@ -7,7 +7,8 @@ from warmstarting.utils.serialization import serialize_results
 def random_search(
         problem: WarmstartingBenchTemplate,
         subset_ratios,
-        epochs
+        epochs,
+        results_file_name: str
         ) -> None:
     """ Implementation of a random search algorithm
 
@@ -19,6 +20,8 @@ def random_search(
         Subset ratio steps to train configs on
     epochs: list[int]
         Epoch steps to train configs on
+    results_file_name
+        name of the results file
     """
 
     problem.get_configuration_space()
@@ -53,5 +56,5 @@ def random_search(
         "subsets": subset_list.tolist(),
     }
 
-    serialize_results(score, configs)
+    serialize_results(score, configs, file_name=results_file_name)
 
