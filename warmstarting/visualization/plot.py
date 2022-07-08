@@ -24,7 +24,7 @@ def visualize_data_epoch_grid(performance: np.ndarray, epochs: np.ndarray, data_
     """
     norm = Normalize(np.min(performance), np.max(performance))
     for model in range(performance.shape[0]):
-        plt.scatter(epochs[model], data_subsets[model], c=performance[model], cmap="inferno", norm=norm)
+        plt.scatter(data_subsets[model], epochs[model], c=performance[model], cmap="inferno", norm=norm)
         plt.title("Model with lr={}".format(configs[model]["lr"]))
         plt.xlabel("Number of Epochs"), plt.ylabel("Data Subset Ratio")
         plt.colorbar()
