@@ -1,6 +1,6 @@
 experiment:
-    dataset: Spam
-    model: FF
+    dataset: MNIST
+    model: CNN_MNIST
     lr_sched:
     criterion: CrossEntropyLoss
     batch_size: 10

@@ -30,11 +30,11 @@ def random_search(
 
     configs = load_configurations(cs)
 
-    performance_data = np.zeros((len(configs), len(epochs), len(subset_ratios)))
-    fit_time_data = np.zeros((len(configs), len(epochs), len(subset_ratios)))
+    performance_data = np.zeros((len(configs), len(epochs), len(subset_ratios)), dtype=list)
+    fit_time_data = np.zeros((len(configs), len(epochs), len(subset_ratios)), dtype=list)
     full_train_time_data = np.zeros((len(configs), len(epochs), len(subset_ratios)))
-    epoch_list = np.zeros((len(configs), len(epochs), len(subset_ratios)))
-    subset_list = np.zeros((len(configs), len(epochs), len(subset_ratios)))
+    epoch_list = np.zeros((len(configs), len(epochs), len(subset_ratios)), dtype=list)
+    subset_list = np.zeros((len(configs), len(epochs), len(subset_ratios)), dtype=list)
 
     for i, config in enumerate(configs):
         for x, epoch_step in enumerate(epochs):
