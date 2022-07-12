@@ -1,19 +1,12 @@
 from __future__ import annotations
 
-from itertools import accumulate
 from typing import Dict, Union, Tuple
-
 import ConfigSpace as CS
 import numpy as np
-
-from ConfigSpace import Configuration, ConfigurationSpace, OrdinalHyperparameter, CategoricalHyperparameter
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import DataLoader
-from torch.utils.tensorboard import SummaryWriter
 from warmstarting.data_loader import DataHandler
-
 from warmstarting.testbench.WarmstartingBenchTemplate import WarmstartingBenchTemplate
 
 
@@ -25,12 +18,11 @@ class DummyBench(WarmstartingBenchTemplate):
                  model_type: str,
                  criterion: torch.nn.Module,
                  device: torch.device,
-                 writer: SummaryWriter,
                  only_new: bool = False,
                  shuffle: bool = False,
                  use_checkpoints: bool = True,
                  rng: Union[np.random.RandomState, int, None] = None,):
-        super(DummyBench, self).__init__(data_handler, configuration_space, fidelity_space, device, writer, only_new, shuffle, use_checkpoints, rng)
+        super(DummyBench, self).__init__(data_handler, configuration_space, fidelity_space, device, only_new, shuffle, use_checkpoints, rng)
         self.model_type = model_type
         self.criterion = criterion
 
