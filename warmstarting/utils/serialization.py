@@ -1,6 +1,7 @@
 import json
 import os
 from datetime import datetime
+from copy import deepcopy
 from typing import Dict, Union, Tuple, List
 from ConfigSpace import Configuration
 
@@ -37,8 +38,9 @@ def serialize_results(score: Dict[str, Union[list, object]],
         file_name = "%s" % datetime.now().strftime("%Y%m%d-%H%M%S")
     file_path = os.path.join(base_path, file_name)
 
+    _configs = deepcopy(configs)
     # Make configuration object serializable for json
-    for c in configs:
+    for c in _configs:
         configuration = c.get_dictionary()
 
         # Change torch object to its respective name to be serializable via json
