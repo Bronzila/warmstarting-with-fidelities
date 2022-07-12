@@ -48,13 +48,13 @@ def random_search(
                 subset_list[i, x, y] = subset_step
                 time_data[i, x, y] = np.mean(results['train_cost'])
 
-    score = {
-        "configs": [],
-        "performance": performance_data.tolist(),
-        "time": time_data.tolist(),
-        "epochs": epoch_list.tolist(),
-        "subsets": subset_list.tolist(),
-    }
+            score = {
+                "configs": [],
+                "performance": performance_data.tolist(),
+                "time": time_data.tolist(),
+                "epochs": epoch_list.tolist(),
+                "subsets": subset_list.tolist(),
+            }
 
-    serialize_results(score, configs, file_name=results_file_name)
+            serialize_results(score, configs, file_name=results_file_name)
 
