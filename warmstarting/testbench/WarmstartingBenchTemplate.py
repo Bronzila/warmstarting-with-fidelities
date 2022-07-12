@@ -222,6 +222,8 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
         train_cost = 0
         train_loss_list = []
         for i, (X_train, y_train) in enumerate(self.train_dataloader):
+            X_train = X_train.to(self.device)
+            y_train = y_train.to(self.device)
             _start = time.time()
 
             optim.zero_grad()
@@ -244,6 +246,8 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
         valid_cost = 0
         valid_loss_list = []
         for i, (X_valid, y_valid) in enumerate(self.valid_dataloader):
+            X_valid = X_valid.to(self.device)
+            y_valid = y_valid.to(self.device)
             self.valid_steps += 1
 
             _start = time.time()
