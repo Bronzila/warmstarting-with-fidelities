@@ -36,9 +36,17 @@ if __name__ == "__main__":
     optimizer = [modules[optim] for optim in params["optimizer"]]
     lr = [float(x) for x in params["lr"]]
 
+    if params["data_subset_ratio"] is not None:
+        data_subset_ratios = params["data_subset_ratio"]
+    else:
+        if params["step_scaling"] == "linear":
+            data_subset_ratios = np.linspace(params["subset_bounds"][0], params["subset_bounds"][1], params["d_sub"])
+        elif params["step_scaling"] == "exponential":
+            data_subset_ratios = np.geomspace(params["subset_bounds"][0], params["subset_bounds"][1], num=params["d_sub"])
+
     HPOLoop(params["model"], lr, params["momentum"], optimizer,
             params["lr_sched"], criterion, params["epoch_bounds"], params["subset_bounds"],
-            config_space, fidelity_space, params["epoch"], params["data_subset_ratio"],
+            config_space, fidelity_space, params["epoch"], data_subset_ratios,
             params["use_checkpoints"], params["shuffle"], params["only_train_on_new"], params["dataset_id"],
             params["results_file_name"])
 
