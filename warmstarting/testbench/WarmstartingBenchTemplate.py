@@ -4,14 +4,9 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import DataLoader
-from torchmetrics import Accuracy, F1Score, Precision, MetricCollection
 import ConfigSpace as CS
 from warmstarting.data_loader import DataHandler
-
 from warmstarting.testbench.AbstractBenchmark import AbstractBenchmark
-
-from torch.utils.tensorboard import SummaryWriter
 from warmstarting.checkpoint_gatekeeper import CheckpointGatekeeper
 
 
@@ -21,7 +16,6 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
                  configuration_space: CS.ConfigurationSpace,
                  fidelity_space: CS.ConfigurationSpace,
                  device: torch.device,
-                 writer: SummaryWriter,
                  only_new: bool = False,
                  shuffle: bool = False,
                  use_checkpoints: bool = True,
@@ -42,17 +36,8 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
         self._configuration_space = configuration_space
         self._fidelity_space = fidelity_space
 
-        # Metrics
-        metrics = MetricCollection([
-            Accuracy().to(self.device), 
-            F1Score().to(self.device), 
-            Precision().to(self.device)])
-        self.train_metrics = metrics.clone(prefix='train_')
-        self.valid_metrics = metrics.clone(prefix='val_')
-
-        self.writer = writer
         self.gk = CheckpointGatekeeper()
-        self.valid_epochs = 0
+        self.valid_steps = 0
 
         self.only_train_on_new_data = only_new
         self.shuffle_subset = shuffle
@@ -77,31 +62,13 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
         """
         criterion = self.init_criterion(configuration, fidelity, rng)
 
-        config_id, model, model_fit_time, train_loss, train_score_cost = self._train_objective(configuration, fidelity, criterion, rng)
-
-        valid_score_cost = 0
-        valid_loss_list = []
-        for i, (X_valid, y_valid) in enumerate(self.valid_dataloader):
-            _start = time.time()
-            pred = model(X_valid)
-            # Valid Acc for one data point
-            loss = criterion(pred, y_valid.long())
-            self.valid_metrics(pred, y_valid)
-            valid_score_cost += time.time() - _start
-            # self.writer.add_scalar("Valid_accuracy_{}".format(config_id), metrics["val_Accuracy"], self.valid_epochs)
-            valid_loss_list.append(loss.cpu().detach().numpy())
-            self.valid_epochs += 1
-        self.writer.add_scalar("Valid_loss_{}_{}".format(config_id, configuration["lr"]), np.mean(valid_loss_list), self.valid_epochs)
-
-        # Valid Acc for the valid dataset
-        total_valid_acc = self.valid_metrics["Accuracy"].compute()
-        val_loss = 1 - total_valid_acc
+        train_loss, train_cost, valid_loss, valid_cost = self._train_objective(configuration, fidelity, criterion, rng)
 
         return {
             'train_loss': train_loss,
-            'train_cost': train_score_cost,
-            'val_loss': np.mean(valid_loss_list),
-            'val_cost': valid_score_cost
+            'train_cost': train_cost,
+            'val_loss': valid_loss,
+            'val_cost': valid_cost
         }
 
     def objective_function_test(self, configuration: CS.Configuration,
@@ -175,13 +142,16 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
                                                         only_new_data=self.only_train_on_new_data)
 
         # fitting the model with subsampled data
-        fit_times, train_losses, train_scores = [], [], []
+        train_cost_list, train_loss_list = [], []
+        valid_cost_list, valid_loss_list = [], []
         for _ in range(fidelity['epoch']):
-            start = time.time()
-            train_score_cost, train_loss = self.train(model, criterion, optimizer, lr_sched)
-            fit_times.append(time.time() - start - train_score_cost)
-            train_losses.append(train_loss)
-            train_scores.append(train_score_cost)
+            train_loss, train_cost = self.train(model, criterion, optimizer, lr_sched)
+            train_loss_list.append(train_loss.item())
+            train_cost_list.append(train_cost)
+
+            valid_loss, valid_cost = self.evaluate(model, criterion)
+            valid_loss_list.append(float(valid_loss))
+            valid_cost_list.append(valid_cost)
 
         fidelity = fidelity.get_dictionary()
         if saved_fidelitiy is not None:
@@ -191,7 +161,7 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
 
         config_id = self.gk.save_model_state(model, optimizer, config, lr_sched, fidelity)
 
-        return config_id, model, fit_times, train_losses, train_scores
+        return train_loss_list, train_cost_list, valid_loss_list, valid_cost_list
 
     def init_model(self, config: Union[CS.Configuration, Dict],
                    fidelity: Union[CS.Configuration, Dict, None] = None,
@@ -249,28 +219,41 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
         lr_scheduler
             If Scheduler exists
         """
-        train_score_cost = 0
-        loss_list = []
+        train_cost = 0
+        train_loss_list = []
         for i, (X_train, y_train) in enumerate(self.train_dataloader):
+            _start = time.time()
+
             optim.zero_grad()
             pred = model(X_train)
             loss = criterion(pred, y_train.long())
             loss.backward()
             optim.step()
+            if lr_scheduler is not None:
+                lr_scheduler.step()
+
+            train_cost += time.time() - _start
 
             if i % 5 == 0:
-                loss_list.append(loss)
+                train_loss_list.append(loss.cpu().detach().numpy())
                 print("Batch {}; Loss: {}".format(i, loss))
 
-            # Metric
+        return np.mean(train_loss_list), train_cost
+
+    def evaluate(self, model: nn.Module, criterion: nn.Module):
+        valid_cost = 0
+        valid_loss_list = []
+        for i, (X_valid, y_valid) in enumerate(self.valid_dataloader):
+            self.valid_steps += 1
+
             _start = time.time()
-            self.train_metrics(pred, y_train)
-            train_score_cost += time.time() - _start
+            pred = model(X_valid)
+            loss = criterion(pred, y_valid.long())
+            valid_cost += time.time() - _start
 
-        if lr_scheduler is not None:
-            lr_scheduler.step()
+            valid_loss_list.append(loss.cpu().detach().numpy())
 
-        return train_score_cost, loss_list
+        return np.mean(valid_loss_list), valid_cost
 
     @staticmethod
     def add_total_fidelity(current, saved):

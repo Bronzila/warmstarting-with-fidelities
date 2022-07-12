@@ -1,7 +1,6 @@
 import argparse
 import torch
 import torch.optim as optim
-from torch.utils.tensorboard import SummaryWriter
 from warmstarting.testbench.DummyBench import DummyBench
 from warmstarting.data_loader import *
 from warmstarting.optimizers.random_search import random_search
@@ -32,7 +31,6 @@ def HPOLoop(
     device = torch.device(_device)
 
     seed = 10
-    writer = SummaryWriter()
 
     config_space_model = ConfigSpaceModel(seed)
     config_space_model.setup_config_space(lr, momentum, optimizer, epoch_bounds, subset_bounds)
@@ -54,7 +52,7 @@ def HPOLoop(
             handler = Country211Data()
 
     problem = DummyBench(handler, config, fidelity, model_type, criterion, device,
-                         writer, rng=seed, use_checkpoints=use_checkpoints, shuffle=shuffle, only_new=only_train_on_new)
+                         rng=seed, use_checkpoints=use_checkpoints, shuffle=shuffle, only_new=only_train_on_new)
 
     random_search(problem, subset_ratios=subset_ratios, epochs=epoch_steps, results_file_name=results_file_name)
 
