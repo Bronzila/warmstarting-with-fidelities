@@ -47,11 +47,13 @@ def visualize_performance_time(performance: np.ndarray, time: np.ndarray, config
         title of the graph
     """
     for model in range(performance.shape[0]):
+        x = time[model].squeeze()
+        for time_idx in range(1, len(x)):
+            x[time_idx] += x[time_idx - 1]
         label = json.dumps(configs[model])
-        plt.plot(time[model][0], performance[model][0], label=label)
+        plt.plot(x, performance[model][0], label=label)
     plt.xlabel("Training Time"),  plt.ylabel("Validation Performance")
     plt.title(title)
-    plt.legend(fontsize=6)
     plt.show()
 
 

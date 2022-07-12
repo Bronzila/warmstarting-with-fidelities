@@ -49,7 +49,7 @@ if __name__ == "__main__":
             title = "checkpoints: {}, only_new: {}, shuffle: {}"\
                 .format(params["use_checkpoints"],  params["only_train_on_new"], params["shuffle"])
             performance = np.array(score["performance"])
-            time = np.array(score["time"])
+            time = np.array(score["full_train_time"])
             configs = np.array(score["configs"])
             visualize_performance_time(performance, time, configs, title)
         elif m == "subset_val":

@@ -1,6 +1,6 @@
 experiment:
-    dataset: MNIST
-    model: CNN_MNIST
+    dataset: IRIS
+    model: FF
     lr_sched:
     criterion: CrossEntropyLoss
     batch_size: 10
@@ -8,7 +8,7 @@ experiment:
     subset_bounds: [0.2, 1]
     use_checkpoints: True
     shuffle: False
-    only_train_on_new: True
+    only_train_on_new: False
 fidelity:
     epoch: [10]
     data_subset_ratio: [0.2, 0.4, 0.6, 0.8, 1]
@@ -17,6 +17,6 @@ configuration:
     momentum: [0.1]
     optimizer: [SGD, Adam]
 plot:
-    vis_method: [time_val, subset_val, grid]
+    vis_method: [time_val]
     results_file_name: true_false_false
 
