@@ -112,7 +112,6 @@ class DataHandler:
         shuffle_dataset (bool): if data will be shuffled
         batch_size (int): batch size
         seed: (int): numpy seed
-        subset_ratio: (float): subset ratio
         device: (torch.device): device to run (cuda/cpu)
 
         Returns
@@ -189,9 +188,12 @@ class PyTorchDatasetManager():
      validation_split: float = 0.2,
      batch_size: int = 60,
      seed: int = 42,
-     subset_ratio: float = 1.0,
      shuffle_dataset: bool = True,
-     device: torch.device = torch.device('cuda')):
+     device: torch.device = torch.device('cpu'),
+     old_ratio: float = 0,
+     new_ratio: float = 1,
+     shuffle_subset: bool = False,
+     only_new_data: bool = False):
         """ Splits the data into train and validation sets and created the dataloaders.
 
         Parameters
@@ -210,15 +212,30 @@ class PyTorchDatasetManager():
         size = len(self.dataset)
         train_set, val_set = torch.utils.data.random_split(self.dataset, [int(size * (1 - validation_split)), int(size * validation_split)])
 
-        subset_size = int(subset_ratio * len(train_set))
-        indices = random.sample(range(0, len(train_set)), subset_size)
-        sub_training_dataset = torch.utils.data.Subset(train_set, indices)
+        val_dataloader = torch.utils.data.DataLoader(val_set, batch_size=batch_size)
+ 
+        if only_new_data and shuffle_subset:
+            old_subset_size = int(old_ratio * len(train_set))
+            old_indices = random.sample(range(len(train_set)), old_subset_size)
+            total_indices = list(range(len(train_set)))
+            diff_indices = list(set(total_indices) ^ set(old_indices))
+            new_subset_size = int(new_ratio * len(diff_indices))
+            final_indices = random.sample(diff_indices, new_subset_size)
+
+        elif not only_new_data and not shuffle_subset:
+            subset_size = int(new_ratio * len(train_set))
+            final_indices = list(range(subset_size))
+       
+        elif only_new_data and not shuffle_subset:
+            start = int(old_ratio * len(train_set))
+            end = int(new_ratio * len(train_set))
+            final_indices = list(range(start, end))
+        else:
+            subset_size = int(new_ratio * len(train_set))
+            final_indices = random.sample(range(len(train_set)), subset_size)
+     
+        sub_training_dataset = torch.utils.data.Subset(train_set, final_indices)
         train_dataloader = torch.utils.data.DataLoader(sub_training_dataset, batch_size=batch_size)
-        
-        subset_size = int(subset_ratio * len(val_set))
-        indices = random.sample(range(0, len(val_set)), subset_size)
-        sub_val_dataset = torch.utils.data.Subset(val_set, indices)
-        val_dataloader = torch.utils.data.DataLoader(sub_val_dataset, batch_size=batch_size)
 
         return train_dataloader, val_dataloader
 
@@ -226,58 +243,86 @@ class PyTorchDatasetManager():
 class CIFAR10Data(PyTorchDatasetManager):
     """ Class loading the Cifar10 data set. """
 
-    def __init__(self):
+    def __init__(self, transform: transforms= None, target_transform: transforms=None):
         super(CIFAR10Data, self).__init__()
+        self.transform = transform
+        self.target_transform = target_transform
 
     def _load(self, download: bool = True):
         self.dataset = datasets.CIFAR10(
             root=self._save_to,
             train=True,
             download=download,
-            transform=ToTensor()
+            transform=self.transform,
+            target_transform=self.target_transform
         )
 
 class CIFAR100Data(PyTorchDatasetManager):
     """ Class loading the Cifar10 data set. """
 
-    def __init__(self):
+    def __init__(self, transform: transforms= None, target_transform: transforms=None):
         super(CIFAR100Data, self).__init__()
+        self.transform = transform
+        self.target_transform = target_transform
 
     def _load(self, download: bool = True):
         self.dataset = datasets.CIFAR100(
             root=self._save_to,
             train=True,
             download=download,
-            transform=ToTensor()
+            transform=self.transform,
+            target_transform=self.target_transform
         )
 
 class Country211Data(PyTorchDatasetManager):
     """ Class loading the Country211 data set. """
 
-    def __init__(self):
+    def __init__(self, transform: transforms= None, target_transform: transforms=None):
         super(Country211Data, self).__init__()
-
+        self.transform = transform
+        self.target_transform = target_transform
+        
     def _load(self, download: bool = True):
         self.dataset = datasets.Country211(
             root=self._save_to,
             download=download,
-            # transform=
-            # target_transform=
+            transform=self.transform,
+            target_transform=self.target_transform
         )
 
 
 class EMNISTData(PyTorchDatasetManager):
     """ Class loading the EMNIST data set. """
 
-    def __init__(self):
+    def __init__(self, split: String="mnist", transform: transforms= None, target_transform: transforms=None):
         super(EMNISTData, self).__init__()
+        self.split = split
+        self.transform = transform
+        self.target_transform = target_transform
 
     def _load(self, download: bool = True):
         self.dataset = datasets.EMNIST(
             root=self._save_to,
             train=True,
             download=download,
-            split="mnist",
-            transform=transforms.CenterCrop(10)
-            # target_transform=
+            split=self.split,
+            transform=self.transform,
+            target_transform=self.target_transform
+        )
+
+class MNISTData(PyTorchDatasetManager):
+    """ Class loading the EMNIST data set. """
+
+    def __init__(self, transform: transforms= None, target_transform: transforms=None):
+        super(MNISTData, self).__init__()
+        self.transform = transform
+        self.target_transform = target_transform
+
+    def _load(self, download: bool = True):
+        self.dataset = datasets.MNIST(
+            root=self._save_to,
+            train=True,
+            download=download,
+            transform=self.transform,
+            target_transform=self.target_transform
         )
