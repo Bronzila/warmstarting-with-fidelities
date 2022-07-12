@@ -31,7 +31,8 @@ def random_search(
     configs = load_configurations(cs)
 
     performance_data = np.zeros((len(configs), len(epochs), len(subset_ratios)))
-    time_data = np.zeros((len(configs), len(epochs), len(subset_ratios)))
+    fit_time_data = np.zeros((len(configs), len(epochs), len(subset_ratios)))
+    full_train_time_data = np.zeros((len(configs), len(epochs), len(subset_ratios)))
     epoch_list = np.zeros((len(configs), len(epochs), len(subset_ratios)))
     subset_list = np.zeros((len(configs), len(epochs), len(subset_ratios)))
 
@@ -46,14 +47,16 @@ def random_search(
                 performance_data[i, x, y] = results['val_loss']
                 epoch_list[i, x, y] = epoch_step
                 subset_list[i, x, y] = subset_step
-                time_data[i, x, y] = np.mean(results['train_cost'])
+                fit_time_data[i, x, y] = np.mean(results['train_cost'])
+                full_train_time_data[i, x, y] = results['full_train_time']
 
     score = {
         "configs": [],
         "performance": performance_data.tolist(),
-        "time": time_data.tolist(),
+        "time": fit_time_data.tolist(),
         "epochs": epoch_list.tolist(),
         "subsets": subset_list.tolist(),
+        "full_train_time": full_train_time_data.tolist()
     }
 
     serialize_results(score, configs, file_name=results_file_name)

@@ -78,12 +78,53 @@ def visualize_performance_subset(performance: np.ndarray, subset: np.ndarray, co
     plt.legend(fontsize=6)
     plt.show()
 
+def visualize_fidelity_time(train_times: np.ndarray, subsets: np.ndarray, configs):
+    """
+    validation fidelity - cost/time
 
-if __name__ == "__main__":
-    score = load_results(file_name="20220708-120332")
+    Parameters
+    ----------
+    train_times
+        training times of both checkpointing and non-checkpointing method.
+        train_times[0] is checkpointing, train_times[1] is without
+    subsets
+        percentages of data used
+    configs
+        model configurations
+    title
+        title of the graph
+    """
 
-    performance = np.array(score["performance"])
-    time = np.array(score["time"])
+    for model in range(train_times.shape[1]):
+        for checkpointing in range(train_times.shape[0]):
+            label = "With checkpointing" if checkpointing == 0 else "Without checkpointing"
+            x = list(map(str, subsets[model].squeeze()))
+            x.append("Accumulated")
+            y = train_times[checkpointing, model].squeeze().tolist()
+            y.append(sum(y))
+            plt.bar(x, y, label=label, width=0.4)
+        plt.title("Model with lr={}".format(configs[model]["lr"]))
+        plt.xlabel("Data Subset Ratio"), plt.ylabel("Train time in seconds")
+        plt.legend()
+        plt.show()
+
+def run_vis_fidelity_time():
+    score = load_results(file_name="checkpoint", base_path="../../results")
+    score_no_checkpoint = load_results(file_name="no_checkpoint", base_path="../../results")
+
+    subsets = np.array(score["subsets"])
+    time = np.array([score["full_train_time"], score_no_checkpoint["full_train_time"]])
     configs = np.array(score["configs"])
 
-    visualize_performance_time(performance, time, configs, "use_checkpoints=True")
+    visualize_fidelity_time(time, subsets, configs)
+
+
+if __name__ == "__main__":
+    run_vis_fidelity_time()
+    # score = load_results(file_name="20220708-120332")
+    #
+    # performance = np.array(score["performance"])
+    # time = np.array(score["time"])
+    # configs = np.array(score["configs"])
+    #
+    # visualize_performance_time(performance, time, configs, "use_checkpoints=True")

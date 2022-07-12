@@ -77,7 +77,7 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
         """
         criterion = self.init_criterion(configuration, fidelity, rng)
 
-        config_id, model, model_fit_time, train_loss, train_score_cost = self._train_objective(configuration, fidelity, criterion, rng)
+        config_id, model, model_fit_time, train_loss, train_score_cost, full_train_time = self._train_objective(configuration, fidelity, criterion, rng)
 
         valid_score_cost = 0
         valid_loss_list = []
@@ -101,7 +101,8 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
             'train_loss': train_loss,
             'train_cost': train_score_cost,
             'val_loss': np.mean(valid_loss_list),
-            'val_cost': valid_score_cost
+            'val_cost': valid_score_cost,
+            'full_train_time': full_train_time
         }
 
     def objective_function_test(self, configuration: CS.Configuration,
@@ -141,7 +142,7 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
         -------
 
         """
-        
+        full_train_start_time = time.time()
         # initializing model
         model = self.init_model(config, fidelity, rng)
         optimizer = self.init_optim(model.parameters(), config, fidelity, rng)
@@ -189,9 +190,15 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
             fidelity["data_subset_ratio"] = fidelity["data_subset_ratio"] - saved_fidelitiy["data_subset_ratio"]
             fidelity = self.add_total_fidelity(fidelity, saved_fidelitiy)
 
-        config_id = self.gk.save_model_state(model, optimizer, config, lr_sched, fidelity)
+        if self.use_checkpoints:
+            config_id = self.gk.save_model_state(model, optimizer, config, lr_sched, fidelity)
+        else:
+            is_saved, config_id = self.gk.check_config_saved(config)
+            if not is_saved:
+                config_id = self.gk.add_config_to_store(config)
 
-        return config_id, model, fit_times, train_losses, train_scores
+        full_train_time = time.time() - full_train_start_time
+        return config_id, model, fit_times, train_losses, train_scores, full_train_time
 
     def init_model(self, config: Union[CS.Configuration, Dict],
                    fidelity: Union[CS.Configuration, Dict, None] = None,
@@ -203,7 +210,7 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
     def init_optim(self, param: nn.Parameter, config: CS.Configuration,
                    fidelity: Union[CS.Configuration, None] = None,
                    rng: Union[int, np.random.RandomState, None] = None) -> optim.Optimizer:
-        """ Function that returns the initialized optimizer based on the models parameters, config and fidelity
+        """ Function that returns the initialized optimizer based on the mod%Dels parameters, config and fidelity
         """
         raise NotImplementedError()
 
