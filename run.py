@@ -36,6 +36,15 @@ if __name__ == "__main__":
     optimizer = [modules[optim] for optim in params["optimizer"]]
     lr = [float(x) for x in params["lr"]]
 
+    if params["data_subset_ratio"] is None:
+        if params["data_subset_step"] == "linear":
+            data_subset_ratio = np.linspace(params["subset_bounds"][0], params["subset_bounds"][1], params["d_sub"])
+        elif params["data_subset_step"] == "exponential":
+            data_subset_ratio = np.linspace(params["subset_bounds"][0], params["subset_bounds"][1], params["d_sub"]) ** 2
+        else:
+            raise ValueError("Unknown step parameter")
+        params["data_subset_ratio"] = data_subset_ratio
+
     HPOLoop(params["model"], lr, params["momentum"], optimizer,
             params["lr_sched"], criterion, params["epoch_bounds"], params["subset_bounds"],
             config_space, fidelity_space, params["epoch"], params["data_subset_ratio"],
