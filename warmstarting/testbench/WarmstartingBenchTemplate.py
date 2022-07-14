@@ -62,13 +62,14 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
         """
         criterion = self.init_criterion(configuration, fidelity, rng)
 
-        train_loss, train_cost, valid_loss, valid_cost = self._train_objective(configuration, fidelity, criterion, rng)
+        train_loss, train_cost, valid_loss, valid_cost, time_step = self._train_objective(configuration, fidelity, criterion, rng)
 
         return {
             'train_loss': train_loss,
             'train_cost': train_cost,
             'val_loss': valid_loss,
-            'val_cost': valid_cost
+            'val_cost': valid_cost,
+            'time_step': time_step
         }
 
     def objective_function_test(self, configuration: CS.Configuration,
@@ -144,6 +145,7 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
         # fitting the model with subsampled data
         train_cost_list, train_loss_list = [], []
         valid_cost_list, valid_loss_list = [], []
+        time_step_list = []
         for _ in range(fidelity['epoch']):
             train_loss, train_cost = self.train(model, criterion, optimizer, lr_sched)
             train_loss_list.append(train_loss.item())
@@ -152,6 +154,7 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
             valid_loss, valid_cost = self.evaluate(model, criterion)
             valid_loss_list.append(float(valid_loss))
             valid_cost_list.append(valid_cost)
+            time_step_list.append(time.time())
 
         fidelity = fidelity.get_dictionary()
         if saved_fidelitiy is not None:
@@ -161,7 +164,7 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
 
         config_id = self.gk.save_model_state(model, optimizer, config, lr_sched, fidelity)
 
-        return train_loss_list, train_cost_list, valid_loss_list, valid_cost_list
+        return train_loss_list, train_cost_list, valid_loss_list, valid_cost_list, time_step_list
 
     def init_model(self, config: Union[CS.Configuration, Dict],
                    fidelity: Union[CS.Configuration, Dict, None] = None,

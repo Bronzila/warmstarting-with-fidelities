@@ -1,3 +1,4 @@
+import time
 import ConfigSpace
 import numpy as np
 from warmstarting.testbench import WarmstartingBenchTemplate
@@ -34,7 +35,9 @@ def random_search(
     time_data = np.zeros((len(configs), len(epochs), len(subset_ratios)), dtype=list)
     epoch_list = np.zeros((len(configs), len(epochs), len(subset_ratios)), dtype=list)
     subset_list = np.zeros((len(configs), len(epochs), len(subset_ratios)), dtype=list)
+    time_step_list = np.zeros((len(configs), len(epochs), len(subset_ratios)), dtype=list)
 
+    start_time = time.time()
     for i, config in enumerate(configs):
         for x, epoch_step in enumerate(epochs):
             for y, subset_step in enumerate(subset_ratios):
@@ -47,14 +50,16 @@ def random_search(
                 epoch_list[i, x, y] = epoch_step
                 subset_list[i, x, y] = subset_step
                 time_data[i, x, y] = np.mean(results['train_cost'])
+                time_step_list[i, x, y] = results['time_step']
 
             score = {
+                "start_time_step": start_time,
                 "configs": [],
                 "performance": performance_data.tolist(),
                 "time": time_data.tolist(),
                 "epochs": epoch_list.tolist(),
                 "subsets": subset_list.tolist(),
+                "time_step": time_step_list.tolist()
             }
 
             serialize_results(score, configs, file_name=results_file_name)
-
