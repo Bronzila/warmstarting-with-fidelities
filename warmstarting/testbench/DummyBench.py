@@ -77,7 +77,10 @@ class DummyBench(WarmstartingBenchTemplate):
     def init_optim(self, param: nn.Parameter, config: Union[CS.Configuration, Dict],
                    fidelity: Union[CS.Configuration, Dict, None] = None,
                    rng: Union[int, np.random.RandomState, None] = None) -> optim.Optimizer:
-        return config["optimizer"](param, lr=config["lr"])
+        if type(config["optimizer"]) is optim.SGD:
+            return config["optimizer"](param, lr=config["lr"], momentum=config["momentum"])
+        else:
+            return config["optimizer"](param, lr=config["lr"])
 
     def init_lr_sched(self, optimizer: optim.Optimizer, config: CS.Configuration,
                       fidelity: Union[CS.Configuration, None] = None,
