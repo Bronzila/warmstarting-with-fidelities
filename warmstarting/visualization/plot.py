@@ -79,11 +79,42 @@ def visualize_performance_subset(performance: np.ndarray, subset: np.ndarray, co
     plt.show()
 
 
+def visualize_discretization():
+    step_scale = ["linear", "exponential"]
+    d_sub = [2, 3, 5, 10, 20]
+
+    for model in range(5):
+        for s in step_scale:
+            for d in d_sub:
+                filename = "iris" + "_" + s + "_" + str(d)
+                score = load_results(file_name=filename, base_path="../../results")
+                flattened_performance = [x for xs in score["performance"][model][0] for x in xs]
+                flattened_time_steps = [y - score["start_time_step"] for ys in score["time_step"][model][0] for y in ys]
+                color = "red" if s == "linear" else "green"
+                plt.plot(flattened_time_steps, flattened_performance, color=color, alpha=0.4)
+        baseline = load_results(file_name="baseline", base_path="../../results")
+        baseline_flattened_performance = [x for xs in baseline["performance"][model][0] for x in xs]
+        baseline_flattened_time_steps = [y - baseline["start_time_step"] for ys in baseline["time_step"][model][0] for y in ys]
+        plt.plot(baseline_flattened_time_steps, baseline_flattened_performance, color="blue")
+        title = "Model {} with lr={}, optimizer={}".format(
+            model + 1,
+            baseline['configs'][model]['lr'],
+            baseline['configs'][model]['optimizer']
+        )
+        if baseline['configs'][model]['optimizer'] == "SGD":
+            title = title + " and momentum={}".format(
+                baseline['configs'][model]['momentum']
+            )
+        plt.title(title)
+        plt.xlabel("Training Time in s"), plt.ylabel("Validation Performance")
+        plt.show()
+
 if __name__ == "__main__":
-    score = load_results(file_name="20220708-120332")
-
-    performance = np.array(score["performance"])
-    time = np.array(score["time"])
-    configs = np.array(score["configs"])
-
-    visualize_performance_time(performance, time, configs, "use_checkpoints=True")
+    # score = load_results(file_name="20220708-120332")
+    #
+    # performance = np.array(score["performance"])
+    # time = np.array(score["time"])
+    # configs = np.array(score["configs"])
+    #
+    # visualize_performance_time(performance, time, configs, "use_checkpoints=True")
+    visualize_discretization()
