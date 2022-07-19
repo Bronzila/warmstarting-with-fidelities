@@ -89,12 +89,21 @@ def visualize_discretization():
                 filename = "iris" + "_" + s + "_" + str(d)
                 score = load_results(file_name=filename, base_path="../../results")
                 flattened_performance = [x for xs in score["performance"][model][0] for x in xs]
-                flattened_time_steps = [y - score["start_time_step"] for ys in score["time_step"][model][0] for y in ys]
+                flattened_time_steps = [y for ys in score["time"][model][0] for y in ys]
+                start = 0
+                for i, y in enumerate(flattened_time_steps):
+                    flattened_time_steps[i] = start + y
+                    start = flattened_time_steps[i]
+
                 color = "red" if s == "linear" else "green"
                 plt.plot(flattened_time_steps, flattened_performance, color=color, alpha=0.4)
         baseline = load_results(file_name="baseline", base_path="../../results")
         baseline_flattened_performance = [x for xs in baseline["performance"][model][0] for x in xs]
-        baseline_flattened_time_steps = [y - baseline["start_time_step"] for ys in baseline["time_step"][model][0] for y in ys]
+        baseline_flattened_time_steps = [y for ys in baseline["time"][model][0] for y in ys]
+        start = 0
+        for i, y in enumerate(baseline_flattened_time_steps):
+            baseline_flattened_time_steps[i] = start + y
+            start = baseline_flattened_time_steps[i]
         plt.plot(baseline_flattened_time_steps, baseline_flattened_performance, color="blue")
         title = "Model {} with lr={}, optimizer={}".format(
             model + 1,

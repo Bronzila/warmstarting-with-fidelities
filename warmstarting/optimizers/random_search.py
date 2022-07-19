@@ -49,7 +49,7 @@ def random_search(
                 performance_data[i, x, y] = results['val_loss']
                 epoch_list[i, x, y] = epoch_step
                 subset_list[i, x, y] = subset_step
-                time_data[i, x, y] = np.mean(results['train_cost'])
+                time_data[i, x, y] = results['train_cost']
                 time_step_list[i, x, y] = results['time_step']
 
             score = {
