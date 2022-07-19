@@ -168,4 +168,4 @@ if __name__ == "__main__":
     # configs = np.array(score["configs"])
     #
     # visualize_performance_time(performance, time, configs, "use_checkpoints=True")
-    visualize_discretization()
+    run_vis_fidelity_time()

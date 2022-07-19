@@ -62,7 +62,7 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
         """
         criterion = self.init_criterion(configuration, fidelity, rng)
 
-        train_loss, train_cost, valid_loss, valid_cost, full_train_time = self._train_objective(configuration, fidelity, criterion, rng)
+        train_loss, train_cost, valid_loss, valid_cost, time_step, full_train_time = self._train_objective(configuration, fidelity, criterion, rng)
 
         return {
             'train_loss': train_loss,
