@@ -4,6 +4,8 @@ import torch.optim as optim
 from warmstarting.testbench.DummyBench import DummyBench
 from warmstarting.data_loader import *
 from warmstarting.optimizers.random_search import random_search
+from warmstarting.optimizers.successive_halving import successive_halving
+from warmstarting.optimizers.hyperband import hyperband
 from warmstarting.config_space_model import ConfigSpaceModel
 from typing import List
 
@@ -54,8 +56,15 @@ def HPOLoop(
     problem = DummyBench(handler, config, fidelity, model_type, criterion, device,
                          rng=seed, use_checkpoints=use_checkpoints, shuffle=shuffle, only_new=only_train_on_new)
 
-    random_search(problem, subset_ratios=subset_ratios, epochs=epoch_steps, results_file_name=results_file_name)
-
+    # random_search(problem, subset_ratios=subset_ratios, epochs=epoch_steps, results_file_name=results_file_name)
+    results = hyperband(
+        problem=problem,
+        min_budget_per_model=subset_bounds[0],
+        max_budget_per_model=subset_bounds[1],
+        epoch_bounds=epoch_bounds,
+        eta=3, fixed=True,
+        results_file_name=results_file_name)
+    print("results")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='main loop of HPO with warmstarting over fidelities')
