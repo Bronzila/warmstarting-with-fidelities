@@ -1,3 +1,4 @@
+import time
 import ConfigSpace
 import numpy as np
 from warmstarting.testbench import WarmstartingBenchTemplate
@@ -35,6 +36,7 @@ def random_search(
     full_train_time_data = np.zeros((len(configs), len(epochs), len(subset_ratios)))
     epoch_list = np.zeros((len(configs), len(epochs), len(subset_ratios)), dtype=list)
     subset_list = np.zeros((len(configs), len(epochs), len(subset_ratios)), dtype=list)
+    time_step_list = np.zeros((len(configs), len(epochs), len(subset_ratios)), dtype=list)
 
     for i, config in enumerate(configs):
         for x, epoch_step in enumerate(epochs):
@@ -47,17 +49,19 @@ def random_search(
                 performance_data[i, x, y] = results['val_loss']
                 epoch_list[i, x, y] = epoch_step
                 subset_list[i, x, y] = subset_step
-                fit_time_data[i, x, y] = np.mean(results['train_cost'])
+                fit_time_data[i, x, y] = results['train_cost']
+                time_step_list[i, x, y] = results['time_step']
                 full_train_time_data[i, x, y] = results['full_train_time']
 
-    score = {
-        "configs": [],
-        "performance": performance_data.tolist(),
-        "time": fit_time_data.tolist(),
-        "epochs": epoch_list.tolist(),
-        "subsets": subset_list.tolist(),
-        "full_train_time": full_train_time_data.tolist()
-    }
+            score = {
+                "configs": [],
+                "performance": performance_data.tolist(),
+                "time": fit_time_data.tolist(),
+                "epochs": epoch_list.tolist(),
+                "subsets": subset_list.tolist(),
+                "time_step": time_step_list.tolist(),
+                "full_train_time": full_train_time_data.tolist()
+            }
 
     serialize_results(score, configs, file_name=results_file_name)
 

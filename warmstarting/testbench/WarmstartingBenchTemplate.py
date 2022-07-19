@@ -69,6 +69,7 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
             'train_cost': train_cost,
             'val_loss': valid_loss,
             'val_cost': valid_cost,
+            'time_step': time_step,
             'full_train_time': full_train_time
         }
 
@@ -145,6 +146,7 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
         # fitting the model with subsampled data
         train_cost_list, train_loss_list = [], []
         valid_cost_list, valid_loss_list = [], []
+        time_step_list = []
         for _ in range(fidelity['epoch']):
             train_loss, train_cost = self.train(model, criterion, optimizer, lr_sched)
             train_loss_list.append(train_loss.item())
@@ -153,6 +155,7 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
             valid_loss, valid_cost = self.evaluate(model, criterion)
             valid_loss_list.append(float(valid_loss))
             valid_cost_list.append(valid_cost)
+            time_step_list.append(time.time())
 
         fidelity = fidelity.get_dictionary()
         if saved_fidelitiy is not None:
@@ -168,7 +171,7 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
                 config_id = self.gk.add_config_to_store(config)
 
         full_train_time = time.time() - full_train_start_time
-        return train_loss_list, train_cost_list, valid_loss_list, valid_cost_list, full_train_time
+        return train_loss_list, train_cost_list, valid_loss_list, valid_cost_list, time_step_list, full_train_time
 
     def init_model(self, config: Union[CS.Configuration, Dict],
                    fidelity: Union[CS.Configuration, Dict, None] = None,
@@ -229,6 +232,8 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
         train_cost = 0
         train_loss_list = []
         for i, (X_train, y_train) in enumerate(self.train_dataloader):
+            X_train = X_train.to(self.device)
+            y_train = y_train.to(self.device)
             _start = time.time()
 
             optim.zero_grad()
@@ -251,6 +256,8 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
         valid_cost = 0
         valid_loss_list = []
         for i, (X_valid, y_valid) in enumerate(self.valid_dataloader):
+            X_valid = X_valid.to(self.device)
+            y_valid = y_valid.to(self.device)
             self.valid_steps += 1
 
             _start = time.time()

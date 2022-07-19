@@ -110,6 +110,7 @@ def visualize_fidelity_time(train_times: np.ndarray, subsets: np.ndarray, config
         plt.legend()
         plt.show()
 
+
 def run_vis_fidelity_time():
     score = load_results(file_name="checkpoint", base_path="../../results")
     score_no_checkpoint = load_results(file_name="no_checkpoint", base_path="../../results")
@@ -120,9 +121,46 @@ def run_vis_fidelity_time():
 
     visualize_fidelity_time(time, subsets, configs)
 
+def visualize_discretization():
+    step_scale = ["linear", "exponential"]
+    d_sub = [2, 3, 5, 10, 20]
+
+    for model in range(5):
+        for s in step_scale:
+            for d in d_sub:
+                filename = "iris" + "_" + s + "_" + str(d)
+                score = load_results(file_name=filename, base_path="../../results")
+                flattened_performance = [x for xs in score["performance"][model][0] for x in xs]
+                flattened_time_steps = [y for ys in score["time"][model][0] for y in ys]
+                start = 0
+                for i, y in enumerate(flattened_time_steps):
+                    flattened_time_steps[i] = start + y
+                    start = flattened_time_steps[i]
+
+                color = "red" if s == "linear" else "green"
+                plt.plot(flattened_time_steps, flattened_performance, color=color, alpha=0.4)
+        baseline = load_results(file_name="baseline", base_path="../../results")
+        baseline_flattened_performance = [x for xs in baseline["performance"][model][0] for x in xs]
+        baseline_flattened_time_steps = [y for ys in baseline["time"][model][0] for y in ys]
+        start = 0
+        for i, y in enumerate(baseline_flattened_time_steps):
+            baseline_flattened_time_steps[i] = start + y
+            start = baseline_flattened_time_steps[i]
+        plt.plot(baseline_flattened_time_steps, baseline_flattened_performance, color="blue")
+        title = "Model {} with lr={}, optimizer={}".format(
+            model + 1,
+            baseline['configs'][model]['lr'],
+            baseline['configs'][model]['optimizer']
+        )
+        if baseline['configs'][model]['optimizer'] == "SGD":
+            title = title + " and momentum={}".format(
+                baseline['configs'][model]['momentum']
+            )
+        plt.title(title)
+        plt.xlabel("Training Time in s"), plt.ylabel("Validation Performance")
+        plt.show()
 
 if __name__ == "__main__":
-    run_vis_fidelity_time()
     # score = load_results(file_name="20220708-120332")
     #
     # performance = np.array(score["performance"])
@@ -130,3 +168,4 @@ if __name__ == "__main__":
     # configs = np.array(score["configs"])
     #
     # visualize_performance_time(performance, time, configs, "use_checkpoints=True")
+    visualize_discretization()

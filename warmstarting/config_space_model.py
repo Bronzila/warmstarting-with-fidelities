@@ -62,9 +62,6 @@ class ConfigSpaceModel:
         if not isinstance(epoch_list, list):
             raise ValueError("setup_config_space: [epoch_list] must be a list")
 
-        if not isinstance(data_subset_list, list):
-            raise ValueError("setup_config_space: [epoch_list] must be a list")
-
         self._config_space = CS.ConfigurationSpace(seed=self.seed)
         lr = CS.hyperparameters.CategoricalHyperparameter('lr', choices=lr_list)
         momentum = CS.hyperparameters.CategoricalHyperparameter('momentum', choices=momentum_list)

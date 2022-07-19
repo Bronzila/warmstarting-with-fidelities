@@ -49,7 +49,7 @@ class DummyBench(WarmstartingBenchTemplate):
             model = nn.Sequential()
             in_channels = 1
             out_dim = 28
-            num_filters_per_layer = [3, 5]
+            num_filters_per_layer = [10, 20]
             conv_kernel_size = 5
             pool_kernel_size = 2
 
@@ -66,8 +66,9 @@ class DummyBench(WarmstartingBenchTemplate):
             out_features = \
                 num_filters_per_layer[-1] * (out_dim * out_dim)
 
-            model.add_module("fc1", nn.Linear(out_features, 10))
-            model.add_module("fc2", nn.LogSoftmax(1))
+            model.add_module("fc1", nn.Linear(out_features, 50))
+            model.add_module("relu", nn.ReLU())
+            model.add_module("fc2", nn.Linear(50, 10))
 
         else:
             raise ValueError("Type of model false or unspecified")
@@ -76,7 +77,10 @@ class DummyBench(WarmstartingBenchTemplate):
     def init_optim(self, param: nn.Parameter, config: Union[CS.Configuration, Dict],
                    fidelity: Union[CS.Configuration, Dict, None] = None,
                    rng: Union[int, np.random.RandomState, None] = None) -> optim.Optimizer:
-        return config["optimizer"](param, lr=config["lr"])
+        if type(config["optimizer"]) is optim.SGD:
+            return config["optimizer"](param, lr=config["lr"], momentum=config["momentum"])
+        else:
+            return config["optimizer"](param, lr=config["lr"])
 
     def init_lr_sched(self, optimizer: optim.Optimizer, config: CS.Configuration,
                       fidelity: Union[CS.Configuration, None] = None,
