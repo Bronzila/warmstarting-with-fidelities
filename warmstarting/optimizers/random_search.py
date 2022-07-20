@@ -51,7 +51,6 @@ def random_search(
                 subset_list[i, x, y] = subset_step
                 fit_time_data[i, x, y] = results['train_cost']
                 time_step_list[i, x, y] = results['time_step']
-                full_train_time_data[i, x, y] = results['full_train_time']
 
             score = {
                 "configs": [],
@@ -59,8 +58,7 @@ def random_search(
                 "time": fit_time_data.tolist(),
                 "epochs": epoch_list.tolist(),
                 "subsets": subset_list.tolist(),
-                "time_step": time_step_list.tolist(),
-                "full_train_time": full_train_time_data.tolist()
+                "time_step": time_step_list.tolist()
             }
 
     serialize_results(score, configs, file_name=results_file_name)

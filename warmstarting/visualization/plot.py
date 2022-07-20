@@ -116,7 +116,10 @@ def run_vis_fidelity_time():
     score_no_checkpoint = load_results(file_name="no_checkpoint", base_path="../../results")
 
     subsets = np.array(score["subsets"])
-    time = np.array([score["full_train_time"], score_no_checkpoint["full_train_time"]])
+    time = np.array([score["time_step"], score_no_checkpoint["time_step"]])
+    initial_times = np.tile(time[..., 0, np.newaxis], time.shape[-1])
+    time -= initial_times
+    time = np.sum(time, axis=-1)
     configs = np.array(score["configs"])
 
     visualize_fidelity_time(time, subsets, configs)

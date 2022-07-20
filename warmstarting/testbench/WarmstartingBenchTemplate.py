@@ -62,15 +62,14 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
         """
         criterion = self.init_criterion(configuration, fidelity, rng)
 
-        train_loss, train_cost, valid_loss, valid_cost, time_step, full_train_time = self._train_objective(configuration, fidelity, criterion, rng)
+        train_loss, train_cost, valid_loss, valid_cost, time_step = self._train_objective(configuration, fidelity, criterion, rng)
 
         return {
             'train_loss': train_loss,
             'train_cost': train_cost,
             'val_loss': valid_loss,
             'val_cost': valid_cost,
-            'time_step': time_step,
-            'full_train_time': full_train_time
+            'time_step': time_step
         }
 
     def objective_function_test(self, configuration: CS.Configuration,
@@ -110,7 +109,7 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
         -------
 
         """
-        full_train_start_time = time.time()
+        train_start_timestamp = time.process_time()
         # initializing model
         model = self.init_model(config, fidelity, rng)
         optimizer = self.init_optim(model.parameters(), config, fidelity, rng)
@@ -147,6 +146,13 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
         train_cost_list, train_loss_list = [], []
         valid_cost_list, valid_loss_list = [], []
         time_step_list = []
+
+        # validate once before training to have a value corresponding to train_start timestamp
+        valid_loss, valid_cost = self.evaluate(model, criterion)
+        valid_loss_list.append(float(valid_loss))
+        valid_cost_list.append(valid_cost)
+        time_step_list.append(train_start_timestamp)
+
         for _ in range(fidelity['epoch']):
             train_loss, train_cost = self.train(model, criterion, optimizer, lr_sched)
             train_loss_list.append(train_loss.item())
@@ -155,7 +161,7 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
             valid_loss, valid_cost = self.evaluate(model, criterion)
             valid_loss_list.append(float(valid_loss))
             valid_cost_list.append(valid_cost)
-            time_step_list.append(time.time())
+            time_step_list.append(time.process_time())
 
         fidelity = fidelity.get_dictionary()
         if saved_fidelitiy is not None:
@@ -170,8 +176,10 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
             if not is_saved:
                 config_id = self.gk.add_config_to_store(config)
 
-        full_train_time = time.time() - full_train_start_time
-        return train_loss_list, train_cost_list, valid_loss_list, valid_cost_list, time_step_list, full_train_time
+        # Adjust last time step, to take model saving into account
+        time_step_list[-1] = time.process_time()
+
+        return train_loss_list, train_cost_list, valid_loss_list, valid_cost_list, time_step_list
 
     def init_model(self, config: Union[CS.Configuration, Dict],
                    fidelity: Union[CS.Configuration, Dict, None] = None,
@@ -234,7 +242,7 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
         for i, (X_train, y_train) in enumerate(self.train_dataloader):
             X_train = X_train.to(self.device)
             y_train = y_train.to(self.device)
-            _start = time.time()
+            _start = time.process_time()
 
             optim.zero_grad()
             pred = model(X_train)
@@ -244,7 +252,7 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
             if lr_scheduler is not None:
                 lr_scheduler.step()
 
-            train_cost += time.time() - _start
+            train_cost += time.process_time() - _start
 
             if i % 5 == 0:
                 train_loss_list.append(loss.cpu().detach().numpy())
@@ -260,10 +268,10 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
             y_valid = y_valid.to(self.device)
             self.valid_steps += 1
 
-            _start = time.time()
+            _start = time.process_time()
             pred = model(X_valid)
             loss = criterion(pred, y_valid.long())
-            valid_cost += time.time() - _start
+            valid_cost += time.process_time() - _start
 
             valid_loss_list.append(loss.cpu().detach().numpy())
 
