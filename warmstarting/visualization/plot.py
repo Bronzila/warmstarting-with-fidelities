@@ -1,6 +1,7 @@
 import json
 
 import matplotlib.pylab as plt
+import matplotlib.colors as clr
 import numpy as np
 from matplotlib.colors import Normalize
 from warmstarting.utils.serialization import load_results
@@ -31,7 +32,7 @@ def visualize_data_epoch_grid(performance: np.ndarray, epochs: np.ndarray, data_
         plt.show()
 
 
-def visualize_performance_time(performance: np.ndarray, time: np.ndarray, configs, title: str):
+def visualize_performance_time(performance: np.ndarray, time: np.ndarray, subsets, configs):
     """
     trade-off: validation performance - training time
 
@@ -46,15 +47,22 @@ def visualize_performance_time(performance: np.ndarray, time: np.ndarray, config
     title
         title of the graph
     """
-    for model in range(performance.shape[0]):
-        x = time[model].squeeze()
-        for time_idx in range(1, len(x)):
-            x[time_idx] += x[time_idx - 1]
-        label = json.dumps(configs[model])
-        plt.plot(x, performance[model][0], label=label)
-    plt.xlabel("Training Time"),  plt.ylabel("Validation Performance")
-    plt.title(title)
-    plt.show()
+    for model in range(time.shape[1]):
+        for checkpointing in range(time.shape[0]):
+            prev_end = 0
+            for subset in range(subsets.shape[-1]):
+                curr_subset = np.around(subsets[model, :, subset].squeeze(), 2)
+                label = f"CP, sub = {curr_subset}" if checkpointing == 0 else f"BL, sub = {curr_subset}"
+                x = time[checkpointing, model, :, subset].squeeze()
+                x += prev_end
+                y = performance[checkpointing, model, :, subset].squeeze()
+                prev_end = x[-1]
+                plt.plot(x, y, label=label)
+        plt.title("Model with lr={}".format(configs[model]["lr"]))
+        plt.xlabel("Time in seconds"), plt.ylabel("Validation loss")
+        plt.legend()
+        plt.grid(True)
+        plt.show()
 
 
 def visualize_performance_subset(performance: np.ndarray, subset: np.ndarray, configs, title: str):
@@ -124,6 +132,19 @@ def run_vis_fidelity_time():
 
     visualize_fidelity_time(time, subsets, configs)
 
+def run_vis_perf_time():
+    score = load_results(file_name="checkpoint", base_path="../../results")
+    score_no_checkpoint = load_results(file_name="no_checkpoint", base_path="../../results")
+
+    subsets = np.array(score["subsets"])
+    performance = np.array([score["performance"], score_no_checkpoint["performance"]])
+    time = np.array([score["time_step"], score_no_checkpoint["time_step"]])
+    initial_times = np.tile(time[..., 0, np.newaxis], time.shape[-1])
+    time -= initial_times
+    configs = np.array(score["configs"])
+
+    visualize_performance_time(performance, time, subsets, configs)
+
 def visualize_discretization():
     step_scale = ["linear", "exponential"]
     d_sub = [2, 3, 5, 10, 20]
@@ -171,4 +192,7 @@ if __name__ == "__main__":
     # configs = np.array(score["configs"])
     #
     # visualize_performance_time(performance, time, configs, "use_checkpoints=True")
-    run_vis_fidelity_time()
+
+    # run_vis_fidelity_time()
+
+    run_vis_perf_time()

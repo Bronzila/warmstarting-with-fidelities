@@ -109,7 +109,7 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
         -------
 
         """
-        train_start_timestamp = time.process_time()
+        train_start_timestamp = time.perf_counter()
         # initializing model
         model = self.init_model(config, fidelity, rng)
         optimizer = self.init_optim(model.parameters(), config, fidelity, rng)
@@ -161,7 +161,7 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
             valid_loss, valid_cost = self.evaluate(model, criterion)
             valid_loss_list.append(float(valid_loss))
             valid_cost_list.append(valid_cost)
-            time_step_list.append(time.process_time())
+            time_step_list.append(time.perf_counter())
 
         fidelity = fidelity.get_dictionary()
         if saved_fidelitiy is not None:
@@ -177,7 +177,7 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
                 config_id = self.gk.add_config_to_store(config)
 
         # Adjust last time step, to take model saving into account
-        time_step_list[-1] = time.process_time()
+        time_step_list[-1] = time.perf_counter()
 
         return train_loss_list, train_cost_list, valid_loss_list, valid_cost_list, time_step_list
 
