@@ -1,7 +1,7 @@
 import json
 
+import matplotlib.cm
 import matplotlib.pylab as plt
-import matplotlib.colors as clr
 import numpy as np
 from matplotlib.colors import Normalize
 from warmstarting.utils.serialization import load_results
@@ -47,17 +47,25 @@ def visualize_performance_time(performance: np.ndarray, time: np.ndarray, subset
     title
         title of the graph
     """
+    cmap_bl = matplotlib.cm.get_cmap("winter")
+    cmap_cp = matplotlib.cm.get_cmap("autumn")
+    color_steps = np.linspace(0, 1, subsets.shape[-1])
     for model in range(time.shape[1]):
         for checkpointing in range(time.shape[0]):
             prev_end = 0
             for subset in range(subsets.shape[-1]):
                 curr_subset = np.around(subsets[model, :, subset].squeeze(), 2)
-                label = f"CP, sub = {curr_subset}" if checkpointing == 0 else f"BL, sub = {curr_subset}"
+                if checkpointing == 0:
+                    color = cmap_cp(color_steps[subset])
+                    label = f"CP, sub = {curr_subset}"
+                else:
+                    color = cmap_bl(color_steps[subset])
+                    label = f"BL, sub = {curr_subset}"
                 x = time[checkpointing, model, :, subset].squeeze()
                 x += prev_end
                 y = performance[checkpointing, model, :, subset].squeeze()
                 prev_end = x[-1]
-                plt.plot(x, y, label=label)
+                plt.plot(x, y, label=label, c=color)
         plt.title("Model with lr={}".format(configs[model]["lr"]))
         plt.xlabel("Time in seconds"), plt.ylabel("Validation loss")
         plt.legend()

@@ -242,7 +242,7 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
         for i, (X_train, y_train) in enumerate(self.train_dataloader):
             X_train = X_train.to(self.device)
             y_train = y_train.to(self.device)
-            _start = time.process_time()
+            _start = time.perf_counter()
 
             optim.zero_grad()
             pred = model(X_train)
@@ -252,7 +252,7 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
             if lr_scheduler is not None:
                 lr_scheduler.step()
 
-            train_cost += time.process_time() - _start
+            train_cost += time.perf_counter() - _start
 
             if i % 5 == 0:
                 train_loss_list.append(loss.cpu().detach().numpy())
@@ -268,10 +268,10 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
             y_valid = y_valid.to(self.device)
             self.valid_steps += 1
 
-            _start = time.process_time()
+            _start = time.perf_counter()
             pred = model(X_valid)
             loss = criterion(pred, y_valid.long())
-            valid_cost += time.process_time() - _start
+            valid_cost += time.perf_counter() - _start
 
             valid_loss_list.append(loss.cpu().detach().numpy())
 
