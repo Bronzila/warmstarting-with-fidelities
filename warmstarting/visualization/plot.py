@@ -1,10 +1,12 @@
 import json
 
-import matplotlib.cm
 import matplotlib.pylab as plt
+import matplotlib
 import numpy as np
 from matplotlib.colors import Normalize
 from warmstarting.utils.serialization import load_results
+import seaborn as sns
+import pandas as pd
 
 
 def visualize_data_epoch_grid(performance: np.ndarray, epochs: np.ndarray, data_subsets: np.ndarray, configs):
@@ -96,7 +98,7 @@ def visualize_performance_subset(performance: np.ndarray, subset: np.ndarray, co
     plt.legend(fontsize=6)
     plt.show()
 
-def visualize_fidelity_time(train_times: np.ndarray, subsets: np.ndarray, configs):
+def visualize_fidelity_time(train_times: np.ndarray, subsets: np.ndarray, performance: np.ndarray, configs):
     """
     validation fidelity - cost/time
 
@@ -107,20 +109,53 @@ def visualize_fidelity_time(train_times: np.ndarray, subsets: np.ndarray, config
         train_times[0] is checkpointing, train_times[1] is without
     subsets
         percentages of data used
+    performance
+
     configs
         model configurations
     title
         title of the graph
     """
 
+    sns.set_theme(palette="tab10", style="whitegrid")
+
     for model in range(train_times.shape[1]):
+        optimum = np.min(performance[:, model])
+        d = []
         for checkpointing in range(train_times.shape[0]):
             label = "With checkpointing" if checkpointing == 0 else "Without checkpointing"
             x = list(map(str, subsets[model].squeeze()))
             x.append("Accumulated")
             y = train_times[checkpointing, model].squeeze().tolist()
             y.append(sum(y))
-            plt.bar(x, y, label=label, width=0.4)
+            # Take the performances after the last training epoch
+            p = performance[checkpointing, model, :, :, -1].squeeze().tolist()
+            p.append(sum(p))
+            for i, _ in enumerate(x):
+                d.append({
+                    "Subset Ratio": x[i],
+                    "Train Time": y[i],
+                    "Checkpoint": label,
+                    "Performance": p[i],
+                    "Optimum": optimum
+                })
+        df = pd.DataFrame(d)
+
+        ax = sns.barplot(x="Subset Ratio", y="Train Time", hue="Checkpoint", data=df)
+        for i, patch in enumerate(ax.patches):
+            if (i + 1) % (len(ax.patches) / 2) == 0:
+                continue
+            optimum = df["Optimum"][model]
+            current_val = df["Performance"][i]
+
+            percentage = ((current_val - optimum) / ((current_val + optimum) / 2)).round(2)
+
+            _x = patch.get_x() + patch.get_width() / 2
+            _y = patch.get_y() + patch.get_height() + 0.1
+
+            patch.set_alpha(max(1 - percentage, 0.01))
+            ax.text(_x, _y, current_val.round(3), ha="center", rotation='vertical')
+
         plt.title("Model with lr={}".format(configs[model]["lr"]))
         plt.xlabel("Data Subset Ratio"), plt.ylabel("Train time in seconds")
         plt.legend()
@@ -136,9 +171,11 @@ def run_vis_fidelity_time():
     initial_times = np.tile(time[..., 0, np.newaxis], time.shape[-1])
     time -= initial_times
     time = np.sum(time, axis=-1)
+    performance = np.array([score["performance"], score_no_checkpoint["performance"]])
     configs = np.array(score["configs"])
 
-    visualize_fidelity_time(time, subsets, configs)
+    visualize_fidelity_time(time, subsets, performance, configs)
+
 
 def run_vis_perf_time():
     score = load_results(file_name="checkpoint", base_path="../../results")
