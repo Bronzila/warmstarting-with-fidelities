@@ -125,7 +125,7 @@ def visualize_fidelity_time(train_times: np.ndarray, subsets: np.ndarray, perfor
                 })
         df = pd.DataFrame(d)
 
-        ax = sns.barplot(x="Subset Ratio", y="Train Time", hue="Checkpoint", data=df, hue_order=["Without checkpointing", "With checkpointing"])
+        ax = sns.barplot(x="Subset Ratio", y="Train Time", hue="Checkpoint", data=df)
         for i, patch in enumerate(ax.patches):
             if (i + 1) % (len(ax.patches) / 2) == 0:
                 continue
