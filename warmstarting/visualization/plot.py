@@ -124,7 +124,7 @@ def visualize_fidelity_time(train_times: np.ndarray, subsets: np.ndarray, perfor
         d = []
         for checkpointing in range(train_times.shape[0]):
             label = "With checkpointing" if checkpointing == 0 else "Without checkpointing"
-            x = list(map(str, subsets[model].squeeze()))
+            x = list(map(str, np.around(subsets[model].squeeze(), 3)))
             x.append("Accumulated")
             y = train_times[checkpointing, model].squeeze().tolist()
             y.append(sum(y))
@@ -161,6 +161,10 @@ def visualize_fidelity_time(train_times: np.ndarray, subsets: np.ndarray, perfor
         plt.legend()
         plt.show()
 
+def get_relative_timestamps(times):
+    initial_times = np.tile(times[..., 0, np.newaxis], times.shape[-1])
+    times -= initial_times
+    return times
 
 def run_vis_fidelity_time():
     score = load_results(file_name="checkpoint", base_path="../../results")
@@ -168,8 +172,7 @@ def run_vis_fidelity_time():
 
     subsets = np.array(score["subsets"])
     time = np.array([score["time_step"], score_no_checkpoint["time_step"]])
-    initial_times = np.tile(time[..., 0, np.newaxis], time.shape[-1])
-    time -= initial_times
+    time = get_relative_timestamps(time)
     time = np.sum(time, axis=-1)
     performance = np.array([score["performance"], score_no_checkpoint["performance"]])
     configs = np.array(score["configs"])
@@ -184,8 +187,7 @@ def run_vis_perf_time():
     subsets = np.array(score["subsets"])
     performance = np.array([score["performance"], score_no_checkpoint["performance"]])
     time = np.array([score["time_step"], score_no_checkpoint["time_step"]])
-    initial_times = np.tile(time[..., 0, np.newaxis], time.shape[-1])
-    time -= initial_times
+    time = get_relative_timestamps(time)
     configs = np.array(score["configs"])
 
     visualize_performance_time(performance, time, subsets, configs)
