@@ -173,7 +173,7 @@ def run_vis_fidelity_time():
     subsets = np.array(score["subsets"])
     time = np.array([score["time_step"], score_no_checkpoint["time_step"]])
     time = get_relative_timestamps(time)
-    time = np.sum(time, axis=-1)
+    time = time[..., -1]
     performance = np.array([score["performance"], score_no_checkpoint["performance"]])
     configs = np.array(score["configs"])
 
