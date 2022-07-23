@@ -38,24 +38,30 @@ def HPOLoop(
     config_space_model = ConfigSpaceModel(seed)
     config_space_model.setup_config_space(lr, momentum, optimizer, epoch_bounds, subset_bounds)
     config, fidelity = config_space_model.get_config_spaces(config_space, fidelity_space)
-    
+
     if (type(dataset_id) is int):
         handler = DataHandler()
         handler.set_dataset(dataset_id)
+        num_classes = 4
     else:
         if (dataset_id == "MNIST"):
             handler = MNISTData(transform=transforms.ToTensor())
+            num_classes = 10
         if (dataset_id == "EMNIST"):
-            handler = EMNISTData()
+            handler = EMNISTData(transform=transforms.ToTensor())
+            num_classes = 10
         elif (dataset_id == "CIFAR10"):
-            handler = CIFAR10Data()
+            handler = CIFAR10Data(transform=transforms.ToTensor())
+            num_classes = 10
         elif (dataset_id == "CIFAR100"):
-            handler = CIFAR100Data()
+            handler = CIFAR100Data(transform=transforms.ToTensor())
+            num_classes = 100
         elif (dataset_id == "Country211Data"):
-            handler = Country211Data()
+            handler = Country211Data(transform=transforms.ToTensor())
+            num_classes = 10 # Check how many classes it has?
 
     problem = DummyBench(handler, config, fidelity, model_type, criterion, device,
-                         rng=seed, use_checkpoints=use_checkpoints, shuffle=shuffle, only_new=only_train_on_new)
+                         rng=seed, use_checkpoints=use_checkpoints, shuffle=shuffle, only_new=only_train_on_new, num_classes=num_classes)
 
     return random_search(problem, subset_ratios=subset_ratios, epochs=epoch_steps, results_file_name=results_file_name)
 
