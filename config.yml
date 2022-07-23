@@ -11,6 +11,7 @@ experiment:
     only_train_on_new: False
     d_sub: 2
     step_scaling: exponential
+    seed: 100
 fidelity:
     epoch: [10]
     data_subset_ratio:

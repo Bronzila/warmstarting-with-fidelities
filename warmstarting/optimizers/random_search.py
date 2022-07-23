@@ -62,4 +62,5 @@ def random_search(
             }
 
     serialize_results(score, configs, file_name=results_file_name)
+    return score
 

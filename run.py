@@ -46,12 +46,14 @@ if __name__ == "__main__":
                 data_subset_ratios = np.linspace(subset_lower_bound, subset_upper_bound, params["d_sub"])
             elif params["step_scaling"] == "exponential":
                 data_subset_ratios = np.geomspace(subset_lower_bound, subset_upper_bound, num=params["d_sub"]).round(2)
+            else:
+                raise ValueError(f'Step scaling method not implemented: {params["step_scaling"]}')
 
         HPOLoop(params["model"], lr, params["momentum"], optimizer,
                 params["lr_sched"], criterion, params["epoch_bounds"], [subset_lower_bound, subset_upper_bound],
                 config_space, fidelity_space, params["epoch"], data_subset_ratios,
-                params["use_checkpoints"], params["shuffle"], params["only_train_on_new"], params["dataset_id"],
-                params["results_file_name"])
+                params["use_checkpoints"], params["shuffle"], params["only_train_on_new"], params["seed"],
+                params["dataset_id"], params["results_file_name"])
 
         score = load_results(file_name=params["results_file_name"])
 
