@@ -53,21 +53,25 @@ def visualize_performance_time(performance: np.ndarray, time: np.ndarray, subset
     cmap_cp = matplotlib.cm.get_cmap("autumn")
     color_steps = np.linspace(0, 1, subsets.shape[-1])
     for model in range(time.shape[1]):
-        for checkpointing in range(time.shape[0]):
-            prev_end = 0
-            for subset in range(subsets.shape[-1]):
-                curr_subset = np.around(subsets[model, :, subset].squeeze(), 2)
-                if checkpointing == 0:
-                    color = cmap_cp(color_steps[subset])
-                    label = f"CP, sub = {curr_subset}"
-                else:
-                    color = cmap_bl(color_steps[subset])
-                    label = f"BL, sub = {curr_subset}"
-                x = time[checkpointing, model, :, subset].squeeze()
-                x += prev_end
-                y = performance[checkpointing, model, :, subset].squeeze()
-                prev_end = x[-1]
-                plt.plot(x, y, label=label, c=color)
+        # for checkpointing in range(time.shape[0]):
+        prev_end = 0
+        for subset in range(subsets.shape[-1]):
+            curr_subset = np.around(subsets[model, :, subset].squeeze(), 2)
+            # if checkpointing == 0:
+            color = cmap_cp(color_steps[subset])
+            label = f"CP, sub = {curr_subset}"
+            # else:
+            #     color = cmap_bl(color_steps[subset])
+            #     label = f"BL, sub = {curr_subset}"
+            x = np.mean(time[:, model, :, subset].squeeze(), axis=0)
+            x += prev_end
+            y = performance[:, model, :, subset].squeeze()
+            y_std = np.std(y, axis=0)
+            y_mean = np.mean(y, axis=0)
+            prev_end = x[-1]
+            plt.plot(x, y_mean, label=label, c=color)
+            plt.fill_between(x, y_mean-y_std, y_mean+y_std, facecolor=color, alpha=0.2)
+            plt.yscale('log')
         plt.title("Model with lr={}".format(configs[model]["lr"]))
         plt.xlabel("Time in seconds"), plt.ylabel("Validation loss")
         plt.legend()
@@ -181,16 +185,19 @@ def run_vis_fidelity_time():
 
 
 def run_vis_perf_time():
-    score = load_results(file_name="checkpoint", base_path="../../results")
-    score_no_checkpoint = load_results(file_name="no_checkpoint", base_path="../../results")
+    score_100 = load_results(file_name="seed100", base_path="../../results")
+    score_200 = load_results(file_name="seed200", base_path="../../results")
+    score_300 = load_results(file_name="seed300", base_path="../../results")
+    score_400 = load_results(file_name="seed400", base_path="../../results")
 
-    subsets = np.array(score["subsets"])
-    performance = np.array([score["performance"], score_no_checkpoint["performance"]])
-    time = np.array([score["time_step"], score_no_checkpoint["time_step"]])
+    subsets = np.array(score_100["subsets"])
+    performance = np.array([score_100["performance"], score_200["performance"], score_300["performance"], score_400["performance"]])
+    time = np.array([score_100["time_step"], score_200["time_step"], score_300["performance"], score_400["performance"]])
     time = get_relative_timestamps(time)
-    configs = np.array(score["configs"])
+    configs = np.array(score_100["configs"])
 
     visualize_performance_time(performance, time, subsets, configs)
+
 
 def visualize_discretization():
     step_scale = ["linear", "exponential"]
@@ -241,5 +248,4 @@ if __name__ == "__main__":
     # visualize_performance_time(performance, time, configs, "use_checkpoints=True")
 
     # run_vis_fidelity_time()
-
     run_vis_perf_time()
