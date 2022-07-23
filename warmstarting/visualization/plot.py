@@ -129,12 +129,9 @@ def visualize_fidelity_time(train_times: np.ndarray, subsets: np.ndarray, perfor
         for checkpointing in range(train_times.shape[0]):
             label = "With checkpointing" if checkpointing == 0 else "Without checkpointing"
             x = list(map(str, np.around(subsets[model].squeeze(), 3)))
-            x.append("Accumulated")
             y = train_times[checkpointing, model].squeeze().tolist()
-            y.append(sum(y))
             # Take the performances after the last training epoch
             p = performance[checkpointing, model, :, :, -1].squeeze().tolist()
-            p.append(sum(p))
             for i, _ in enumerate(x):
                 d.append({
                     "Subset Ratio": x[i],
@@ -146,9 +143,12 @@ def visualize_fidelity_time(train_times: np.ndarray, subsets: np.ndarray, perfor
         df = pd.DataFrame(d)
 
         ax = sns.barplot(x="Subset Ratio", y="Train Time", hue="Checkpoint", data=df)
+
+        plt.title(f"Model with lr={configs[model]['lr']}")
+        plt.xlabel("Data Subset Ratio"), plt.ylabel("Train time in seconds")
+        plt.legend()
+
         for i, patch in enumerate(ax.patches):
-            if (i + 1) % (len(ax.patches) / 2) == 0:
-                continue
             optimum = df["Optimum"][model]
             current_val = df["Performance"][i]
 
@@ -157,12 +157,7 @@ def visualize_fidelity_time(train_times: np.ndarray, subsets: np.ndarray, perfor
             _x = patch.get_x() + patch.get_width() / 2
             _y = patch.get_y() + patch.get_height() + 0.1
 
-            patch.set_alpha(max(1 - percentage, 0.01))
-            ax.text(_x, _y, current_val.round(3), ha="center", rotation='vertical')
-
-        plt.title("Model with lr={}".format(configs[model]["lr"]))
-        plt.xlabel("Data Subset Ratio"), plt.ylabel("Train time in seconds")
-        plt.legend()
+            patch.set_alpha(max(1 - percentage, 0.1))
         plt.show()
 
 def get_relative_timestamps(times):
@@ -171,8 +166,8 @@ def get_relative_timestamps(times):
     return times
 
 def run_vis_fidelity_time():
-    score = load_results(file_name="checkpoint", base_path="../../results")
-    score_no_checkpoint = load_results(file_name="no_checkpoint", base_path="../../results")
+    score = load_results(file_name="checkpoint_iris", base_path="../../results")
+    score_no_checkpoint = load_results(file_name="no_checkpoint_iris", base_path="../../results")
 
     subsets = np.array(score["subsets"])
     time = np.array([score["time_step"], score_no_checkpoint["time_step"]])
