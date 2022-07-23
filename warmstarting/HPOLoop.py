@@ -24,13 +24,16 @@ def HPOLoop(
         use_checkpoints: bool,
         shuffle: bool,
         only_train_on_new: bool,
+        seed: int = 0,
         dataset_id: int = 61,
         results_file_name: str = "results"
 ):
     _device = "cuda" if torch.cuda.is_available() else "cpu"
     device = torch.device(_device)
 
-    seed = 10
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+    random.seed(seed)
 
     config_space_model = ConfigSpaceModel(seed)
     config_space_model.setup_config_space(lr, momentum, optimizer, epoch_bounds, subset_bounds)
@@ -54,7 +57,7 @@ def HPOLoop(
     problem = DummyBench(handler, config, fidelity, model_type, criterion, device,
                          rng=seed, use_checkpoints=use_checkpoints, shuffle=shuffle, only_new=only_train_on_new)
 
-    random_search(problem, subset_ratios=subset_ratios, epochs=epoch_steps, results_file_name=results_file_name)
+    return random_search(problem, subset_ratios=subset_ratios, epochs=epoch_steps, results_file_name=results_file_name)
 
 
 if __name__ == "__main__":
