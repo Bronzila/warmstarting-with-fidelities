@@ -1,6 +1,6 @@
 experiment:
-    dataset: IRIS
-    model: FF
+    dataset: CIFAR10
+    model: RESNET-18
     lr_sched:
     criterion: CrossEntropyLoss
     batch_size: 10
