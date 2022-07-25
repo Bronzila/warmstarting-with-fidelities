@@ -49,9 +49,16 @@ if __name__ == "__main__":
             else:
                 raise ValueError(f'Step scaling method not implemented: {params["step_scaling"]}')
 
+        epochs = params["epoch"]
+        if not len(params["epoch"]) == len(data_subset_ratios):
+            if len(params["epoch"]) == 1:
+                epochs = epochs * len(data_subset_ratios)
+            else:
+                raise ValueError('Length of epoch list different to length of subset ratios and != 1')
+
         HPOLoop(params["model"], lr, params["momentum"], optimizer,
                 params["lr_sched"], criterion, params["epoch_bounds"], [subset_lower_bound, subset_upper_bound],
-                config_space, fidelity_space, params["epoch"], data_subset_ratios,
+                config_space, fidelity_space, epochs, data_subset_ratios,
                 params["use_checkpoints"], params["shuffle"], params["only_train_on_new"], params["seed"],
                 params["dataset_id"], params["results_file_name"])
 

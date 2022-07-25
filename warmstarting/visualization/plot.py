@@ -52,6 +52,46 @@ def visualize_performance_time(performance: np.ndarray, time: np.ndarray, subset
     cmap_bl = matplotlib.cm.get_cmap("winter")
     cmap_cp = matplotlib.cm.get_cmap("autumn")
     color_steps = np.linspace(0, 1, subsets.shape[-1])
+    for model in range(time.shape[1]):
+        for checkpointing in range(time.shape[0]):
+            prev_end = 0
+            for subset in range(subsets.shape[-1]):
+                curr_subset = np.around(subsets[model, subset], 2)
+                if checkpointing == 0:
+                    color = cmap_cp(color_steps[subset])
+                    label = f"CP, sub = {curr_subset}"
+                else:
+                    color = cmap_bl(color_steps[subset])
+                    label = f"BL, sub = {curr_subset}"
+                x = np.array(time[checkpointing, model, subset])
+                x += prev_end
+                y = performance[checkpointing, model, subset]
+                prev_end = x[-1]
+                plt.plot(x, y, label=label, c=color)
+        plt.title("Model with lr={}".format(configs[model]["lr"]))
+        plt.xlabel("Time in seconds"), plt.ylabel("Validation loss")
+        plt.legend()
+        plt.grid(True)
+        plt.show()
+
+def visualize_seeded_performance(performance: np.ndarray, time: np.ndarray, subsets, configs):
+    """
+    trade-off: validation performance - training time
+
+    Parameters
+    ----------
+    performance
+        validation performance
+    time
+        training time
+    configs
+        model configurations
+    title
+        title of the graph
+    """
+    cmap_bl = matplotlib.cm.get_cmap("winter")
+    cmap_cp = matplotlib.cm.get_cmap("autumn")
+    color_steps = np.linspace(0, 1, subsets.shape[-1])
     for model in range(time.shape[2]):
         for checkpointing in range(time.shape[0]):
             prev_end = 0
@@ -70,7 +110,7 @@ def visualize_performance_time(performance: np.ndarray, time: np.ndarray, subset
                 y_mean = np.mean(y, axis=0)
                 prev_end = x[-1]
                 plt.plot(x, y_mean, label=label, c=color)
-                plt.fill_between(x, y_mean-y_std, y_mean+y_std, facecolor=color, alpha=0.2)
+                plt.fill_between(x, y_mean - y_std, y_mean + y_std, facecolor=color, alpha=0.2)
                 plt.yscale('log')
         plt.title("Model with lr={}".format(configs[model]["lr"]))
         plt.xlabel("Time in seconds"), plt.ylabel("Validation loss")
@@ -125,13 +165,17 @@ def visualize_fidelity_time(train_times: np.ndarray, subsets: np.ndarray, perfor
 
     for model in range(train_times.shape[1]):
         optimum = np.min(performance[:, model])
+        if type(optimum) is list:
+            optimum = min(optimum)
         d = []
         for checkpointing in range(train_times.shape[0]):
             label = "With checkpointing" if checkpointing == 0 else "Without checkpointing"
-            x = list(map(str, np.around(subsets[model].squeeze(), 3)))
-            y = train_times[checkpointing, model].squeeze().tolist()
+            x = list(map(str, np.around(subsets[model], 2)))
+            y = train_times[checkpointing, model]
             # Take the performances after the last training epoch
-            p = performance[checkpointing, model, :, :, -1].squeeze().tolist()
+            p = []
+            for sbs_ep in range(performance.shape[2]):
+                p.append(performance[checkpointing, model, sbs_ep][-1])
             for i, _ in enumerate(x):
                 d.append({
                     "Subset Ratio": x[i],
@@ -161,25 +205,48 @@ def visualize_fidelity_time(train_times: np.ndarray, subsets: np.ndarray, perfor
         plt.show()
 
 def get_relative_timestamps(times):
-    initial_times = np.tile(times[..., 0, np.newaxis], times.shape[-1])
-    times -= initial_times
+    for cp in range(times.shape[0]):
+        for mdl in range(times.shape[1]):
+            for sbs_ep in range(times.shape[2]):
+                time = np.array(times[cp, mdl, sbs_ep])
+                time -= time[0]
+                times[cp, mdl, sbs_ep] = time.tolist()
     return times
 
 def run_vis_fidelity_time():
-    score = load_results(file_name="checkpoint_iris", base_path="../../results")
-    score_no_checkpoint = load_results(file_name="no_checkpoint_iris", base_path="../../results")
+    score = load_results(file_name="checkpoint", base_path="../../results")
+    score_no_checkpoint = load_results(file_name="no_checkpoint", base_path="../../results")
 
     subsets = np.array(score["subsets"])
     time = np.array([score["time_step"], score_no_checkpoint["time_step"]])
     time = get_relative_timestamps(time)
-    time = time[..., -1]
+
+    # only save final time of training
+    final_times = np.zeros((time.shape[0], time.shape[1], time.shape[2]))
+    for cp in range(time.shape[0]):
+        for mdl in range(time.shape[1]):
+            for sbs_ep in range(time.shape[2]):
+                final_times[cp, mdl, sbs_ep] = time[cp, mdl, sbs_ep][-1]
+
     performance = np.array([score["performance"], score_no_checkpoint["performance"]])
     configs = np.array(score["configs"])
 
-    visualize_fidelity_time(time, subsets, performance, configs)
+    visualize_fidelity_time(final_times, subsets, performance, configs)
 
 
 def run_vis_perf_time():
+    score = load_results(file_name="checkpoint", base_path="../../results")
+    score_no_checkpoint = load_results(file_name="no_checkpoint", base_path="../../results")
+
+    subsets = np.array(score["subsets"])
+    performance = np.array([score["performance"], score_no_checkpoint["performance"]])
+    time = np.array([score["time_step"], score_no_checkpoint["time_step"]])
+    time = get_relative_timestamps(time)
+    configs = np.array(score["configs"])
+
+    visualize_performance_time(performance, time, subsets, configs)
+
+def run_seeded_perf():
     base_path = "../../results"
     seeds = [100, 200, 300, 400]
 
@@ -207,7 +274,7 @@ def run_vis_perf_time():
     performance = np.array([cp_performance, bl_performance])
     time = np.array([cp_time, bl_time])
 
-    visualize_performance_time(performance, time, subsets, configs)
+    visualize_seeded_performance(performance, time, subsets, configs)
 
 
 def visualize_discretization():
@@ -260,12 +327,3 @@ if __name__ == "__main__":
 
     # run_vis_fidelity_time()
     run_vis_perf_time()
-
-
-# Run longer with smaller complexity
-# More seeds and More Datasets -->
-# Drop the randomization for now, since the dataset is "effectively random" --> low prio
-# start with 4 --> Freeze Thaw and epochs!
-# 2ep 2ep 2ep --> then show something with more --> 5ep 5ep 5ep
-
-# Effectively our poster is a "

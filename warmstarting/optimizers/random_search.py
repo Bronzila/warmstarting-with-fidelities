@@ -31,26 +31,24 @@ def random_search(
 
     configs = load_configurations(cs)
 
-    performance_data = np.zeros((len(configs), len(epochs), len(subset_ratios)), dtype=list)
-    fit_time_data = np.zeros((len(configs), len(epochs), len(subset_ratios)), dtype=list)
-    full_train_time_data = np.zeros((len(configs), len(epochs), len(subset_ratios)))
-    epoch_list = np.zeros((len(configs), len(epochs), len(subset_ratios)), dtype=list)
-    subset_list = np.zeros((len(configs), len(epochs), len(subset_ratios)), dtype=list)
-    time_step_list = np.zeros((len(configs), len(epochs), len(subset_ratios)), dtype=list)
+    performance_data = np.zeros((len(configs), len(subset_ratios)), dtype=list)
+    fit_time_data = np.zeros((len(configs), len(subset_ratios)), dtype=list)
+    epoch_list = np.zeros((len(configs), len(subset_ratios)), dtype=list)
+    subset_list = np.zeros((len(configs), len(subset_ratios)), dtype=list)
+    time_step_list = np.zeros((len(configs), len(subset_ratios)), dtype=list)
 
     for i, config in enumerate(configs):
-        for x, epoch_step in enumerate(epochs):
-            for y, subset_step in enumerate(subset_ratios):
-                fidelity = ConfigSpace.Configuration(fs, values={
-                    "epoch": epoch_step,
-                    "data_subset_ratio": subset_step
-                })
-                results = problem.objective_function(config, fidelity)
-                performance_data[i, x, y] = results['val_loss']
-                epoch_list[i, x, y] = epoch_step
-                subset_list[i, x, y] = subset_step
-                fit_time_data[i, x, y] = results['train_cost']
-                time_step_list[i, x, y] = results['time_step']
+        for x, (subset_step, epoch_step) in enumerate(zip(subset_ratios, epochs)):
+            fidelity = ConfigSpace.Configuration(fs, values={
+                "epoch": epoch_step,
+                "data_subset_ratio": subset_step
+            })
+            results = problem.objective_function(config, fidelity)
+            performance_data[i, x] = results['val_loss']
+            epoch_list[i, x] = epoch_step
+            subset_list[i, x] = subset_step
+            fit_time_data[i, x] = results['train_cost']
+            time_step_list[i, x] = results['time_step']
 
             score = {
                 "configs": [],
