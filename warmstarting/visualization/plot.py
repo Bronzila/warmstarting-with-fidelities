@@ -266,11 +266,11 @@ def run_seeded_perf():
         cp_performance.append(cp_score["performance"])
         bl_performance.append(bl_score["performance"])
 
-        cp_time.append(cp_score["time_step"])
-        bl_time.append(bl_score["time_step"])
+        current_cp_time = get_relative_timestamps(np.array(cp_score["time_step"]))
+        current_bl_time = get_relative_timestamps(np.array(bl_score["time_step"]))
+        cp_time.append(current_cp_time)
+        bl_time.append(current_bl_time)
 
-    cp_time = get_relative_timestamps(np.array(cp_time))
-    bl_time = get_relative_timestamps(np.array(bl_time))
     performance = np.array([cp_performance, bl_performance])
     time = np.array([cp_time, bl_time])
 
@@ -327,3 +327,4 @@ if __name__ == "__main__":
 
     # run_vis_fidelity_time()
     run_vis_perf_time()
+    # run_seeded_perf()
