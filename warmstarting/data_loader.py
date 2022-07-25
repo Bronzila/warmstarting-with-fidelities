@@ -6,12 +6,9 @@ import openml
 import numpy as np
 import torch
 from torch.utils.data import DataLoader, WeightedRandomSampler, TensorDataset, Dataset
-import torchvision
 import torch
 from torch.utils.data import Dataset
 from torchvision import datasets
-from torchvision.transforms import ToTensor
-from torchvision.transforms import RandomCrop
 import torchvision.transforms as transforms
 import random
 
@@ -20,6 +17,7 @@ import random
 
 class TrainingSet(Dataset):
     def __init__(self,X,Y):
+        super().__init__()
         self.X = X
         self.Y = Y                  
 
@@ -31,10 +29,18 @@ class TrainingSet(Dataset):
 
 class DataHandler:
     """
-    This class is to get the dataset, save it, seperate it into train and test sets.
+    Abstract class for data loader
+    """
+    def __init__(self):
+        pass
+
+class OpenMLDATA(DataHandler):
+    """
+    This class is to get the openml datasets, save it, seperate it into train and test sets.
     """
 
     def __init__(self,):
+        super().__init__()
         self.X = None
         self.y = None
 
@@ -90,6 +96,9 @@ class DataHandler:
             np.save(f, X)
         with open("y.npy", 'wb') as f:
             np.save(f, y)
+
+    def get_number_of_classes(self):
+        return len(np.unique(self.y))
 
     def get_train_and_val_set(
         self,
@@ -171,18 +180,27 @@ class DataHandler:
 
         return train_dataloader, valid_dataloader
 
-class PyTorchDatasetManager():
+class PyTorchDatasetManager(DataHandler):
     """ Base Class for PyTorch datasets
     """
 
     def __init__(self):
+        super().__init__()
         self._save_to = 'datasets/torch'
+        self.dataset = None
+        print("Loading the data...")
 
     def load(self):
         """ Loads data from data directory as defined in
         config_file.data_directory
         """
         raise NotImplementedError()
+
+    def get_number_of_classes(self):
+        if self.dataset is not None:
+            return len(self.dataset.classes)
+        else:
+            return -1
 
     def get_train_and_val_set(self,
      validation_split: float = 0.2,
@@ -206,8 +224,7 @@ class PyTorchDatasetManager():
             train_dataloader (DataLoader): Train data loader
             val_dataloader (DataLoader): Validation data loader
         """
-        print("Loading the data...")
-        self._load()
+
         torch.manual_seed(seed=seed)
         size = len(self.dataset)
         train_set, val_set = torch.utils.data.random_split(self.dataset, [int(size * (1 - validation_split)), int(size * validation_split)])
@@ -247,6 +264,7 @@ class CIFAR10Data(PyTorchDatasetManager):
         super(CIFAR10Data, self).__init__()
         self.transform = transform
         self.target_transform = target_transform
+        self._load()
 
     def _load(self, download: bool = True):
         self.dataset = datasets.CIFAR10(
@@ -264,6 +282,7 @@ class CIFAR100Data(PyTorchDatasetManager):
         super(CIFAR100Data, self).__init__()
         self.transform = transform
         self.target_transform = target_transform
+        self._load()
 
     def _load(self, download: bool = True):
         self.dataset = datasets.CIFAR100(
@@ -281,7 +300,8 @@ class Country211Data(PyTorchDatasetManager):
         super(Country211Data, self).__init__()
         self.transform = transform
         self.target_transform = target_transform
-        
+        self._load()
+
     def _load(self, download: bool = True):
         self.dataset = datasets.Country211(
             root=self._save_to,
@@ -299,6 +319,7 @@ class EMNISTData(PyTorchDatasetManager):
         self.split = split
         self.transform = transform
         self.target_transform = target_transform
+        self._load()
 
     def _load(self, download: bool = True):
         self.dataset = datasets.EMNIST(
@@ -317,6 +338,7 @@ class MNISTData(PyTorchDatasetManager):
         super(MNISTData, self).__init__()
         self.transform = transform
         self.target_transform = target_transform
+        self._load()
 
     def _load(self, download: bool = True):
         self.dataset = datasets.MNIST(

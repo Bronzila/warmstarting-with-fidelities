@@ -40,25 +40,21 @@ def HPOLoop(
     config, fidelity = config_space_model.get_config_spaces(config_space, fidelity_space)
 
     if (type(dataset_id) is int):
-        handler = DataHandler()
+        handler = OpenMLDATA()
         handler.set_dataset(dataset_id)
-        num_classes = 4
     else:
         if (dataset_id == "MNIST"):
             handler = MNISTData(transform=transforms.ToTensor())
-            num_classes = 10
         if (dataset_id == "EMNIST"):
             handler = EMNISTData(transform=transforms.ToTensor())
-            num_classes = 10
         elif (dataset_id == "CIFAR10"):
             handler = CIFAR10Data(transform=transforms.ToTensor())
-            num_classes = 10
         elif (dataset_id == "CIFAR100"):
             handler = CIFAR100Data(transform=transforms.ToTensor())
-            num_classes = 100
         elif (dataset_id == "Country211Data"):
             handler = Country211Data(transform=transforms.ToTensor())
-            num_classes = 10 # Check how many classes it has?
+
+    num_classes = handler.get_number_of_classes()
 
     problem = DummyBench(handler, config, fidelity, model_type, criterion, device,
                          rng=seed, use_checkpoints=use_checkpoints, shuffle=shuffle, only_new=only_train_on_new, num_classes=num_classes)
