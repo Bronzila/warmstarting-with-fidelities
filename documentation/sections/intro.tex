@@ -1,0 +1,22 @@
+Hyperparameter optimization is computationally very expensive which is why many speedup techniques were developed.
+Especially multi-fidelity improved its performance, e.g. by focussing on promissing configurations (Hyperband) \cite{Li2016} or by intelligently sampling interesting configurations using bayesian optimization \cite{Falkner2018}.
+In order to find the most promissing configurations, we need to train them and evaluate their performance for every fidelity.
+However the current implementations of those algorithms train by discarding the achieved progress from the last fidelity and start from scratch every time.
+There is research about saving such interim results and continuing later on, but its focussed merely on the fidelity epochs (Freeze-Thaw) \cite{Swersky2014}.
+Our goal was to use this approach for the fidelity subsets.
+Furthermore we wanted to create a framework to use different fidelities to learn insights about the training behaviour.
+
+%Research Questions from neeratyoy:
+%\begin{itemize}
+%    \item Do we need one or more fidelities and checkpointing?
+%    \item How do we allow for continuation for fidelities?
+%    \item What can we learn about the optimisation?
+%\end{itemize}
+%What is the main goal we want to achieve? is it performance, efficiency, ...?
+%Since some research was already performed in this topic (regarding warmstarting), what do we try to do differently?
+%We tried to generate a experimenting framework to enable warmstarting with different fidelities.
+%Hereby we allow to run the experiments with separate fidelities as well as them joined together.
+%The purpose behind this approach was to gain insides of the training behaviour as well as the influence of different fidelity-mixes.
+%Also interesting for us was to see the amount of influence each fidelity has for the training - and thus the hyperparameter configuration choices.\\
+
+%How did we approach it? selected fidelities,

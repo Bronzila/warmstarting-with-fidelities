@@ -139,3 +139,12 @@ runs/
 checkpoints/
 graphs/
 results/
+
+# LaTeX
+*.bbl
+*.out
+*.pdf
+*.brf
+*.aux
+*.blg
+
