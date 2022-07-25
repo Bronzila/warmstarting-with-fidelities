@@ -8,7 +8,9 @@ import torch.nn as nn
 import torch.optim as optim
 from warmstarting.data_loader import DataHandler
 from warmstarting.testbench.WarmstartingBenchTemplate import WarmstartingBenchTemplate
-
+from warmstarting.models.resnet import *
+from warmstarting.models.simple_cnn import *
+from warmstarting.models.simple_mlp import *
 
 class DummyBench(WarmstartingBenchTemplate):
     def __init__(self,
@@ -21,10 +23,12 @@ class DummyBench(WarmstartingBenchTemplate):
                  only_new: bool = False,
                  shuffle: bool = False,
                  use_checkpoints: bool = True,
-                 rng: Union[np.random.RandomState, int, None] = None,):
+                 rng: Union[np.random.RandomState, int, None] = None,
+                 num_classes: int = 10,):
         super(DummyBench, self).__init__(data_handler, configuration_space, fidelity_space, device, only_new, shuffle, use_checkpoints, rng)
         self.model_type = model_type
         self.criterion = criterion
+        self.num_classes = num_classes
 
     def objective_function_test(self, configuration: Union[CS.Configuration, Dict],
                                 fidelity: Union[Dict, CS.Configuration, None] = None,
@@ -37,39 +41,20 @@ class DummyBench(WarmstartingBenchTemplate):
     def init_model(self, config: Union[CS.Configuration, Dict], fidelity: Union[CS.Configuration, Dict, None] = None,
                    rng: Union[int, np.random.RandomState, None] = None):
         if self.model_type == "FF":
-            model = nn.Sequential(
-                nn.Linear(4, 50),
-                nn.ReLU(),
-                nn.Linear(50, 50),
-                nn.ReLU(),
-                nn.Linear(50, 3),
-                nn.Softmax(dim=1)
-            )
-        elif self.model_type == "CNN_MNIST":
-            model = nn.Sequential()
-            in_channels = 1
-            out_dim = 28
-            num_filters_per_layer = [10, 20]
-            conv_kernel_size = 5
-            pool_kernel_size = 2
-
-            for i, num_filters in enumerate(num_filters_per_layer):
-                model.add_module(f"conv{i}", nn.Conv2d(in_channels, num_filters, conv_kernel_size, stride=1, padding=0))
-                out_dim = (out_dim - conv_kernel_size) + 1
-                model.add_module(f"act{i}", nn.ReLU())
-                model.add_module(f"pool{i}", nn.MaxPool2d(pool_kernel_size))
-                out_dim = int((out_dim - pool_kernel_size) / pool_kernel_size + 1)
-                in_channels = num_filters
-
-            model.add_module("flat", Flatten())
-            # out_features is equal to channels of last layer * height of output * width of output
-            out_features = \
-                num_filters_per_layer[-1] * (out_dim * out_dim)
-
-            model.add_module("fc1", nn.Linear(out_features, 50))
-            model.add_module("relu", nn.ReLU())
-            model.add_module("fc2", nn.Linear(50, 10))
-
+            model = SimpleMLP()
+        elif self.model_type == "SIMPLE-CNN":
+            model = SimpleCNN()
+        elif self.model_type == "RESNET-18":
+            model = ResNet18(num_classes=self.num_classes)
+        elif self.model_type == "RESNET-34":
+            model = ResNet34(num_classes=self.num_classes)
+        elif self.model_type == "RESNET-50":
+            model = ResNet50(num_classes=self.num_classes)
+        elif self.model_type == "RESNET-101":
+            model = ResNet101(num_classes=self.num_classes)
+        elif self.model_type == "RESNET-152":
+            model = ResNet152(num_classes=self.num_classes)
+        
         else:
             raise ValueError("Type of model false or unspecified")
         return model.to(self.device)
@@ -91,8 +76,3 @@ class DummyBench(WarmstartingBenchTemplate):
     def init_criterion(self, config: CS.Configuration, fidelity: Union[CS.Configuration, None] = None,
                        rng: Union[int, np.random.RandomState, None] = None):
         return self.criterion()
-
-
-class Flatten(nn.Module):
-    def forward(self, x):
-        return x.view(x.size()[0], -1)

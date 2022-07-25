@@ -5,7 +5,7 @@ experiment:
     criterion: CrossEntropyLoss
     batch_size: 10
     epoch_bounds: [3, 10]
-    subset_bounds: [0.4, 1]
+    subset_bounds: [0.2, 1]
     use_checkpoints: True
     shuffle: False
     only_train_on_new: False
