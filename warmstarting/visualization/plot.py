@@ -68,6 +68,7 @@ def visualize_performance_time(performance: np.ndarray, time: np.ndarray, subset
                 y = performance[checkpointing, model, subset]
                 prev_end = x[-1]
                 plt.plot(x, y, label=label, c=color)
+                plt.yscale('log')
         plt.title("Model with lr={}".format(configs[model]["lr"]))
         plt.xlabel("Time in seconds"), plt.ylabel("Validation loss")
         plt.legend()
@@ -96,16 +97,16 @@ def visualize_seeded_performance(performance: np.ndarray, time: np.ndarray, subs
         for checkpointing in range(time.shape[0]):
             prev_end = 0
             for subset in range(subsets.shape[-1]):
-                curr_subset = np.around(subsets[model, :, subset].squeeze(), 2)
+                curr_subset = np.around(subsets[model, subset].squeeze(), 2)
                 if checkpointing == 0:
                     color = cmap_cp(color_steps[subset])
                     label = f"CP, sub = {curr_subset}"
                 else:
                     color = cmap_bl(color_steps[subset])
                     label = f"BL, sub = {curr_subset}"
-                x = np.mean(time[checkpointing, :, model, :, subset].squeeze(), axis=0)
+                x = np.mean(time[checkpointing, :, model, subset, :].squeeze(), axis=0)
                 x += prev_end
-                y = performance[checkpointing, :, model, :, subset].squeeze()
+                y = performance[checkpointing, :, model, subset, :].squeeze()
                 y_std = np.std(y, axis=0)
                 y_mean = np.mean(y, axis=0)
                 prev_end = x[-1]
@@ -247,8 +248,8 @@ def run_vis_perf_time():
     visualize_performance_time(performance, time, subsets, configs)
 
 def run_seeded_perf():
-    base_path = "../../results"
-    seeds = [100, 200, 300, 400]
+    base_path = "../../experiments/cnn_cifar10_5seeds/results"
+    seeds = [100, 200, 400]
 
     cp_performance = []
     bl_performance = []
@@ -266,11 +267,10 @@ def run_seeded_perf():
         cp_performance.append(cp_score["performance"])
         bl_performance.append(bl_score["performance"])
 
-        current_cp_time = get_relative_timestamps(np.array(cp_score["time_step"]))
-        current_bl_time = get_relative_timestamps(np.array(bl_score["time_step"]))
-        cp_time.append(current_cp_time)
-        bl_time.append(current_bl_time)
-
+        current_cp_time = get_relative_timestamps(np.expand_dims(np.array(cp_score["time_step"]), axis=0))
+        current_bl_time = get_relative_timestamps(np.expand_dims(np.array(bl_score["time_step"]), axis=0))
+        cp_time.append(current_cp_time[0])
+        bl_time.append(current_bl_time[0])
     performance = np.array([cp_performance, bl_performance])
     time = np.array([cp_time, bl_time])
 
