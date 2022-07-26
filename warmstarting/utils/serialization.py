@@ -70,3 +70,15 @@ def load_results(base_path: str = "./results/", file_name: str = "result"):
     with open(file, 'r') as f:
         file_data = json.load(f)
     return file_data
+
+
+def fix_unnecessairy_dim(base_path: str = "./results/", file_name: str = "result"):
+    bl_score = load_results(file_name=file_name, base_path=base_path)
+    for item in bl_score:
+        if item == "configs": continue
+        for i, model in enumerate(bl_score[item]):
+            bl_score[item][i] = model[0]
+
+    file_path = os.path.join(base_path, "_" + file_name)
+    with open(file_path, 'w') as f:
+        json.dump(bl_score, f)
