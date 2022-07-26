@@ -138,7 +138,7 @@ datasets/
 runs/
 checkpoints/
 graphs/
-results/
+/results/
 
 # LaTeX
 *.bbl
