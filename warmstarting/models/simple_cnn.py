@@ -13,8 +13,8 @@ class SimpleCNN(nn.Module):
         self.model = nn.Sequential()
         in_channels = 1
         out_dim = 28
-        num_filters_per_layer = [10, 20]
-        conv_kernel_size = 5
+        num_filters_per_layer = [3, 3]
+        conv_kernel_size = 3
         pool_kernel_size = 2
 
         for i, num_filters in enumerate(num_filters_per_layer):
@@ -30,9 +30,9 @@ class SimpleCNN(nn.Module):
         out_features = \
             num_filters_per_layer[-1] * (out_dim * out_dim)
 
-        self.model.add_module("fc1", nn.Linear(out_features, 50))
+        self.model.add_module("fc1", nn.Linear(out_features, 30))
         self.model.add_module("relu", nn.ReLU())
-        self.model.add_module("fc2", nn.Linear(50, num_classes))
+        self.model.add_module("fc2", nn.Linear(30, num_classes))
 
     def forward(self, x):
         return self.model(x)
