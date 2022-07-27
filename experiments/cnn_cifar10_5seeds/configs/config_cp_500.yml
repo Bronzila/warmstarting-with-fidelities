@@ -16,8 +16,8 @@ fidelity:
     epoch: [10]
     data_subset_ratio:
 configuration:
-    lr: [0.00025, 0.0005, 0.00075, 0.001, 0.00125]
-    momentum: [0.1, 0.3, 0.6]
+    lr: [ 0.001, 0.002, 0.003, 0.004, 0.0009 ]
+    momentum: [ 0.1, 0.3, 0.6, 0.9 ]
     optimizer: [SGD, Adam]
 plot:
     vis_method: []
