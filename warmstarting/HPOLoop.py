@@ -26,7 +26,8 @@ def HPOLoop(
         only_train_on_new: bool,
         seed: int = 0,
         dataset_id: int = 61,
-        results_file_name: str = "results"
+        results_file_name: str = "results",
+        batch_size:int = 10,
 ):
     _device = "cuda" if torch.cuda.is_available() else "cpu"
     device = torch.device(_device)
@@ -57,7 +58,8 @@ def HPOLoop(
     num_classes = handler.get_number_of_classes()
 
     problem = DummyBench(handler, config, fidelity, model_type, criterion, device,
-                         rng=seed, use_checkpoints=use_checkpoints, shuffle=shuffle, only_new=only_train_on_new, num_classes=num_classes)
+                         rng=seed, use_checkpoints=use_checkpoints, shuffle=shuffle, only_new=only_train_on_new, num_classes=num_classes,
+                         batch_size=batch_size)
 
     return random_search(problem, subset_ratios=subset_ratios, epochs=epoch_steps, results_file_name=results_file_name)
 

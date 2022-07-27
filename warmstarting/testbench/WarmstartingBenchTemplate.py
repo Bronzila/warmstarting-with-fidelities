@@ -19,7 +19,8 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
                  only_new: bool = False,
                  shuffle: bool = False,
                  use_checkpoints: bool = True,
-                 rng: Union[np.random.RandomState, int, None] = None):
+                 rng: Union[np.random.RandomState, int, None] = None,
+                 batch_size:int = 10,):
         """
         This class is a base class for implementing warm starting for HPO
         """
@@ -30,6 +31,7 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
 
         self.device = device
         self.data_handler = data_handler
+        self.batch_size = batch_size
         super(AbstractBenchmark).__init__()
 
         # Observation and fidelity spaces
@@ -42,6 +44,7 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
         self.only_train_on_new_data = only_new
         self.shuffle_subset = shuffle
         self.use_checkpoints = use_checkpoints
+
 
     def objective_function(self, configuration: CS.Configuration,
                            fidelity: Union[CS.Configuration, None] = None,
@@ -132,15 +135,17 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
                 old_ratio = saved_fidelitiy["data_subset_ratio"]
             new_ratio = fidelity["data_subset_ratio"]
             self.train_dataloader, self.valid_dataloader = \
-                self.data_handler.get_train_and_val_set(batch_size=10, device=self.device,
+                self.data_handler.get_train_and_val_set(batch_size=self.batch_size, device=self.device,
                                                         shuffle_subset=self.shuffle_subset,
                                                         only_new_data=self.only_train_on_new_data,
-                                                        old_ratio=old_ratio, new_ratio=new_ratio)
+                                                        old_ratio=old_ratio, new_ratio=new_ratio,
+                                                        seed=self.seed)
         else:
             self.train_dataloader, self.valid_dataloader = \
-                self.data_handler.get_train_and_val_set(batch_size=10, device=self.device,
+                self.data_handler.get_train_and_val_set(batch_size=self.batch_size, device=self.device,
                                                         shuffle_subset=self.shuffle_subset,
-                                                        only_new_data=self.only_train_on_new_data)
+                                                        only_new_data=self.only_train_on_new_data,
+                                                        seed=self.seed)
 
         # fitting the model with subsampled data
         train_cost_list, train_loss_list = [], []

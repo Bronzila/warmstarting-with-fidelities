@@ -60,7 +60,7 @@ if __name__ == "__main__":
                 params["lr_sched"], criterion, params["epoch_bounds"], [subset_lower_bound, subset_upper_bound],
                 config_space, fidelity_space, epochs, data_subset_ratios,
                 params["use_checkpoints"], params["shuffle"], params["only_train_on_new"], params["seed"],
-                params["dataset_id"], params["results_file_name"])
+                params["dataset_id"], params["results_file_name"], params["batch_size"])
 
         score = load_results(file_name=params["results_file_name"])
 

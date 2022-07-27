@@ -24,8 +24,9 @@ class DummyBench(WarmstartingBenchTemplate):
                  shuffle: bool = False,
                  use_checkpoints: bool = True,
                  rng: Union[np.random.RandomState, int, None] = None,
-                 num_classes: int = 10,):
-        super(DummyBench, self).__init__(data_handler, configuration_space, fidelity_space, device, only_new, shuffle, use_checkpoints, rng)
+                 num_classes: int = 10,
+                 batch_size:int = 10):
+        super(DummyBench, self).__init__(data_handler, configuration_space, fidelity_space, device, only_new, shuffle, use_checkpoints, rng, batch_size)
         self.model_type = model_type
         self.criterion = criterion
         self.num_classes = num_classes
