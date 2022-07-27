@@ -135,12 +135,12 @@ class WarmstartingBenchTemplate(AbstractBenchmark):
                 self.data_handler.get_train_and_val_set(batch_size=10, device=self.device,
                                                         shuffle_subset=self.shuffle_subset,
                                                         only_new_data=self.only_train_on_new_data,
-                                                        old_ratio=old_ratio, new_ratio=new_ratio)
+                                                        old_ratio=old_ratio, new_ratio=new_ratio, seed=self.seed)
         else:
             self.train_dataloader, self.valid_dataloader = \
                 self.data_handler.get_train_and_val_set(batch_size=10, device=self.device,
                                                         shuffle_subset=self.shuffle_subset,
-                                                        only_new_data=self.only_train_on_new_data)
+                                                        only_new_data=self.only_train_on_new_data, seed=self.seed)
 
         # fitting the model with subsampled data
         train_cost_list, train_loss_list = [], []
