@@ -5,18 +5,18 @@
 \begin{algorithm}
 	\caption{Warmstarting} 
 	\begin{algorithmic}[1]
-            \State Given dataset $D$ = \{(x,y)\}\textsuperscript{N}
+            \State Given dataset $D$ = \{(x, y)\}\textsuperscript{N}
             \State model config $m$
-            \State fidelity basket = \{($d\textsubscript{sub}, epoch)$\}\textsuperscript{M} where $d\_sub$ is the data subset ratio
-		\For{each $d\textsubscript{sub}, epoch$ in the fidelity basket}
+            \State fidelity basket = \{($d_{sub}, epoch)$\}\textsuperscript{M} where $d_{sub}$ is the data subset ratio
+		\For{each $d_{sub}, epoch$ in the fidelity basket}
                 \If {config $m$ has been trained}
                     \State Load model and optimizer
                 \Else {}
                     \State Initialize model from scratch
                  \EndIf
-            \State Get $D\textsubscript{sub}$ from $D$ so that $| D\textsubscript{sub} | = d\textsubscript{sub} \times |D| $
+            \State Get $D_{sub}$ from $D$, so that $| D_{sub} | = d_{sub} \times |D| $
             \State Get dataloaders for training and evaluation
-            \State Train model for $epoch$ epochs on $D\textsubscript{sub}$
+            \State Train model for $epoch$ epochs on $D_{sub}$
             \State Save model and optimizer
 		\EndFor
 	\end{algorithmic} 
