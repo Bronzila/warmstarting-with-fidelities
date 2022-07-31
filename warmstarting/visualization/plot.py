@@ -7,6 +7,7 @@ from matplotlib.colors import Normalize
 from warmstarting.utils.serialization import load_results
 import seaborn as sns
 import pandas as pd
+from matplotlib.lines import Line2D
 
 
 def visualize_data_epoch_grid(performance: np.ndarray, epochs: np.ndarray, data_subsets: np.ndarray, configs):
@@ -34,7 +35,7 @@ def visualize_data_epoch_grid(performance: np.ndarray, epochs: np.ndarray, data_
         plt.show()
 
 
-def visualize_performance_time(performance: np.ndarray, time: np.ndarray, subsets, configs):
+def visualize_performance_time_bl(performance: np.ndarray, time: np.ndarray, subsets, configs):
     """
     trade-off: validation performance - training time
 
@@ -69,10 +70,94 @@ def visualize_performance_time(performance: np.ndarray, time: np.ndarray, subset
                 prev_end = x[-1]
                 plt.plot(x, y, label=label, c=color)
         plt.title("Model with lr={}".format(configs[model]["lr"]))
-        plt.xlabel("Time in seconds"), plt.ylabel("Validation loss")
+        plt.xlabel("Training Time in seconds"), plt.ylabel("Validation loss")
         plt.legend()
+        plt.yscale('log')
         plt.grid(True)
         plt.show()
+
+def visualize_performance_time_multiple(performance: np.ndarray, time: np.ndarray, subsets, configs, epochs):
+    """
+    trade-off: validation performance - training time
+
+    Parameters
+    ----------
+    performance
+        validation performance
+    time
+        training time
+    configs
+        model configurations
+    title
+        title of the graph
+    """
+    cmaps = [matplotlib.cm.get_cmap("Blues"), matplotlib.cm.get_cmap("Greens"),
+             matplotlib.cm.get_cmap("Reds"), matplotlib.cm.get_cmap("Greys")]
+    for model in range(time[0].shape[1]):
+        for bucket in range(len(time)):
+            curr_perf = performance[bucket]
+            curr_time = time[bucket]
+            curr_subsets = subsets[bucket]
+            curr_epochs = epochs[bucket]
+            prev_end = 0
+            for subset in range(curr_subsets[model].shape[-1]):
+                color_steps = np.linspace(0.5, 0.9, curr_subsets.shape[-1])
+                curr_subset = np.around(curr_subsets[model, subset], 2)
+                label = f"sub = {curr_subset}, ep = {curr_epochs[model, subset]}"
+                color = cmaps[bucket](color_steps[subset])
+                x = np.array(curr_time[model, subset])
+                x += prev_end
+                y = curr_perf[model, subset]
+                prev_end = x[-1]
+                plt.plot(x, y, label=label, c=color)
+        plt.title("Hyperband-Bucket like scaling")
+        plt.xlabel("Training Time in seconds"), plt.ylabel("Validation loss")
+        plt.legend()
+        plt.yscale('log')
+        plt.grid(True)
+        plt.show()
+
+def visualize_performance_time_diagonal(performance: np.ndarray, time: np.ndarray, subsets, configs, epochs):
+    """
+    trade-off: validation performance - training time
+
+    Parameters
+    ----------
+    performance
+        validation performance
+    time
+        training time
+    configs
+        model configurations
+    title
+        title of the graph
+    """
+    cmap_bl = matplotlib.cm.get_cmap("winter")
+    cmap_cp = matplotlib.cm.get_cmap("autumn")
+    color_steps = np.linspace(0, 1, subsets.shape[-1])
+    for model in range(time.shape[1]):
+        for is_linear in range(time.shape[0]):
+            prev_end = 0
+            for subset in range(subsets.shape[-1]):
+                curr_subset = np.around(subsets[is_linear, model, subset], 2)
+                if is_linear == 0:
+                    color = cmap_cp(color_steps[subset])
+                    label = f"Lin, sub = {curr_subset}, ep = {epochs[is_linear, model, subset]}"
+                else:
+                    color = cmap_bl(color_steps[subset])
+                    label = f"Exp, sub = {curr_subset}, ep = {epochs[is_linear, model, subset]}"
+                x = np.array(time[is_linear, model, subset])
+                x += prev_end
+                y = performance[is_linear, model, subset]
+                prev_end = x[-1]
+                plt.plot(x, y, label=label, c=color)
+        plt.title("Moving along fidelity diagonal")
+        plt.xlabel("Training Time in seconds"), plt.ylabel("Validation loss")
+        plt.legend()
+        plt.yscale('log')
+        plt.grid(True)
+        plt.savefig(f'{configs[model]["lr"]}.png')
+        plt.cla()
 
 def visualize_seeded_performance(performance: np.ndarray, time: np.ndarray, subsets, configs):
     """
@@ -96,27 +181,28 @@ def visualize_seeded_performance(performance: np.ndarray, time: np.ndarray, subs
         for checkpointing in range(time.shape[0]):
             prev_end = 0
             for subset in range(subsets.shape[-1]):
-                curr_subset = np.around(subsets[model, :, subset].squeeze(), 2)
+                curr_subset = np.around(subsets[model, subset], 2)
                 if checkpointing == 0:
                     color = cmap_cp(color_steps[subset])
                     label = f"CP, sub = {curr_subset}"
                 else:
                     color = cmap_bl(color_steps[subset])
                     label = f"BL, sub = {curr_subset}"
-                x = np.mean(time[checkpointing, :, model, :, subset].squeeze(), axis=0)
+                x = np.mean(time[checkpointing, :, model, subset, :], axis=0)
                 x += prev_end
-                y = performance[checkpointing, :, model, :, subset].squeeze()
+                y = performance[checkpointing, :, model, subset, :]
                 y_std = np.std(y, axis=0)
                 y_mean = np.mean(y, axis=0)
                 prev_end = x[-1]
                 plt.plot(x, y_mean, label=label, c=color)
                 plt.fill_between(x, y_mean - y_std, y_mean + y_std, facecolor=color, alpha=0.2)
-                plt.yscale('log')
+                # plt.yscale('log')
         plt.title("Model with lr={}".format(configs[model]["lr"]))
         plt.xlabel("Time in seconds"), plt.ylabel("Validation loss")
-        # plt.legend()
+        plt.legend()
         plt.grid(True)
-        plt.show()
+        plt.savefig(f'model_{model}.png')
+        plt.clf()
 
 
 def visualize_performance_subset(performance: np.ndarray, subset: np.ndarray, configs, title: str):
@@ -234,9 +320,9 @@ def run_vis_fidelity_time():
     visualize_fidelity_time(final_times, subsets, performance, configs)
 
 
-def run_vis_perf_time():
-    score = load_results(file_name="checkpoint", base_path="../../results")
-    score_no_checkpoint = load_results(file_name="no_checkpoint", base_path="../../results")
+def run_vis_perf_time_with_bl():
+    score = load_results(file_name="diagonal_linear", base_path="../../results/Moving_along_diag")
+    score_no_checkpoint = load_results(file_name="diagonal_exponential", base_path="../../results/Moving_along_diag")
 
     subsets = np.array(score["subsets"])
     performance = np.array([score["performance"], score_no_checkpoint["performance"]])
@@ -244,11 +330,43 @@ def run_vis_perf_time():
     time = get_relative_timestamps(time)
     configs = np.array(score["configs"])
 
-    visualize_performance_time(performance, time, subsets, configs)
+    visualize_performance_time_bl(performance, time, subsets, configs)
+
+def run_vis_perf_time_diagonal():
+    score_lin = load_results(file_name="diagonal_linear", base_path="../../results/Moving_along_diag")
+    score_exp = load_results(file_name="diagonal_exponential", base_path="../../results/Moving_along_diag")
+
+    subsets = np.array([score_lin["subsets"], score_exp["subsets"]])
+    epochs = np.array([score_lin["epochs"], score_exp["epochs"]])
+    performance = np.array([score_lin["performance"], score_exp["performance"]])
+    time = np.array([score_lin["time_step"], score_exp["time_step"]])
+    time = get_relative_timestamps(time)
+    configs = np.array(score_lin["configs"])
+
+    visualize_performance_time_diagonal(performance, time, subsets, configs, epochs)
+
+def run_vis_perf_time():
+    performances = []
+    times = []
+    subsets = []
+    epochs = []
+    for filename in ["hb_1", "hb_2", "hb_3", "hb_4"]:
+        score = load_results(file_name=filename, base_path="../../results/Hyperband")
+
+        subsets.append(np.array(score["subsets"]))
+        epochs.append(np.array(score["epochs"]))
+        performances.append(np.array(score["performance"]))
+        time = np.expand_dims(np.array(score["time_step"]), axis=0)
+        time = get_relative_timestamps(time)
+        times.append(time.squeeze())
+        configs = np.array(score["configs"])
+
+    visualize_performance_time_multiple(performances, times, subsets, configs, epochs)
 
 def run_seeded_perf():
-    base_path = "../../results"
-    seeds = [100, 200, 300, 400]
+    base_path = "../../results/CIFAR-Seeds-exponential"
+    # seeds = [0, 50, 100, 150, 200]
+    seeds = [100, 200, 300, 400, 500]
 
     cp_performance = []
     bl_performance = []
@@ -266,10 +384,10 @@ def run_seeded_perf():
         cp_performance.append(cp_score["performance"])
         bl_performance.append(bl_score["performance"])
 
-        current_cp_time = get_relative_timestamps(np.array(cp_score["time_step"]))
-        current_bl_time = get_relative_timestamps(np.array(bl_score["time_step"]))
-        cp_time.append(current_cp_time)
-        bl_time.append(current_bl_time)
+        current_cp_time = get_relative_timestamps(np.expand_dims(np.array(cp_score["time_step"]), axis=0))
+        current_bl_time = get_relative_timestamps(np.expand_dims(np.array(bl_score["time_step"]), axis=0))
+        cp_time.append(current_cp_time[0])
+        bl_time.append(current_bl_time[0])
 
     performance = np.array([cp_performance, bl_performance])
     time = np.array([cp_time, bl_time])
@@ -326,5 +444,7 @@ if __name__ == "__main__":
     # visualize_performance_time(performance, time, configs, "use_checkpoints=True")
 
     # run_vis_fidelity_time()
-    run_vis_perf_time()
+    # run_vis_perf_time_with_bl()
+    run_vis_perf_time_diagonal()
+    # run_vis_perf_time()
     # run_seeded_perf()

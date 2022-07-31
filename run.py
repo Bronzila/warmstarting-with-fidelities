@@ -5,7 +5,7 @@ from warmstarting.HPOLoop import HPOLoop
 from warmstarting.utils.datasets import select_dataset_id
 from warmstarting.utils.serialization import load_results
 from warmstarting.utils.torch import modules
-from warmstarting.visualization.plot import visualize_performance_time, visualize_data_epoch_grid, visualize_performance_subset
+from warmstarting.visualization.plot import visualize_performance_time_bl, visualize_data_epoch_grid, visualize_performance_subset
 
 
 if __name__ == "__main__":
@@ -71,7 +71,7 @@ if __name__ == "__main__":
                 performance = np.array(score["performance"])
                 time = np.array(score["full_train_time"])
                 configs = np.array(score["configs"])
-                visualize_performance_time(performance, time, configs, title)
+                visualize_performance_time_bl(performance, time, configs, title)
             elif m == "subset_val":
                 title = "checkpoints: {}, only_new: {}, shuffle: {}"\
                     .format(params["use_checkpoints"],  params["only_train_on_new"], params["shuffle"])
