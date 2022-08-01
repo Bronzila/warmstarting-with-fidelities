@@ -53,7 +53,7 @@ def random_search(
             score = {
                 "configs": [],
                 "performance": performance_data.tolist(),
-                "time": fit_time_data.tolist(),
+                "fit_time": fit_time_data.tolist(),
                 "epochs": epoch_list.tolist(),
                 "subsets": subset_list.tolist(),
                 "time_step": time_step_list.tolist()
