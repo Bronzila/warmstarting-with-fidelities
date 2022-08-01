@@ -4,14 +4,12 @@ import matplotlib.pylab as plt
 import matplotlib
 import numpy as np
 from matplotlib.colors import Normalize
-from matplotlib.patches import Rectangle
-
 from warmstarting.utils.serialization import load_results
-from warmstarting.utils.plotting import HandlerColormap
 import seaborn as sns
 import pandas as pd
 from matplotlib.lines import Line2D
-
+from matplotlib.legend_handler import HandlerBase
+from matplotlib.patches import Rectangle
 
 def visualize_data_epoch_grid(performance: np.ndarray, epochs: np.ndarray, data_subsets: np.ndarray, configs):
     """
@@ -38,7 +36,7 @@ def visualize_data_epoch_grid(performance: np.ndarray, epochs: np.ndarray, data_
         plt.show()
 
 
-def visualize_performance_time_bl(performance: np.ndarray, time: np.ndarray, subsets, configs):
+def visualize_performance_time(performance: np.ndarray, time: np.ndarray, subsets, configs):
     """
     trade-off: validation performance - training time
 
@@ -73,65 +71,34 @@ def visualize_performance_time_bl(performance: np.ndarray, time: np.ndarray, sub
                 prev_end = x[-1]
                 plt.plot(x, y, label=label, c=color)
         plt.title("Model with lr={}".format(configs[model]["lr"]))
-        plt.xlabel("Training Time in seconds"), plt.ylabel("Validation loss")
+        plt.xlabel("Time in seconds"), plt.ylabel("Validation loss")
         plt.legend()
-        plt.yscale('log')
+        # plt.yscale('log')
         plt.grid(True)
         plt.show()
 
-def visualize_performance_time_multiple(performance: np.ndarray, time: np.ndarray, subsets, configs, epochs):
-    """
-    trade-off: validation performance - training time
 
-    Parameters
-    ----------
-    performance
-        validation performance
-    time
-        training time
-    configs
-        model configurations
-    title
-        title of the graph
-    """
-    cmaps = [matplotlib.cm.get_cmap("copper"), matplotlib.cm.get_cmap("summer"),
-             matplotlib.cm.get_cmap("cool"), matplotlib.cm.get_cmap("winter")]
-    for model in range(time[0].shape[1]):
-        color_lists = []
-        for bucket in range(len(time)):
-            color_lists.append([])
-            curr_perf = performance[bucket]
-            curr_time = time[bucket]
-            curr_subsets = subsets[bucket]
-            curr_epochs = epochs[bucket]
-            prev_end = 0
-            for subset in range(curr_subsets[model].shape[-1]):
-                color_steps = np.linspace(0.3, 0.9, curr_subsets.shape[-1])
-                curr_subset = np.around(curr_subsets[model, subset], 2)
-                label = f"sub = {curr_subset}, ep = {curr_epochs[model, subset]}"
-                color = cmaps[bucket](color_steps[subset])
-                color_lists[bucket].append(color)
-                x = np.array(curr_time[model, subset])
-                x += prev_end
-                y = curr_perf[model, subset]
-                prev_end = x[-1]
-                plt.plot(x, y, label=label, c=color)
-        plt.title("MNIST\nHyperband-Bucket like scaling")
-        plt.xlabel("Training Time in seconds"), plt.ylabel("Validation loss")
+class HandlerColormap(HandlerBase):
+    def __init__(self, cmap, fc, num_stripes=5, **kw):
+        HandlerBase.__init__(self, **kw)
+        self.cmap = cmap
+        self.num_stripes = num_stripes
+        self.fc = fc
+    
+    def create_artists(self, legend, orig_handle, 
+                       xdescent, ydescent, width, height, fontsize, trans):
+        stripes = []
+        for i in range(self.num_stripes):
+            s = Rectangle([xdescent + i * width / self.num_stripes, ydescent], 
+                          width / self.num_stripes, 
+                          height, 
+                          fc=self.fc[i],
+                          transform=trans)
+            stripes.append(s)
+        return stripes
 
-        cmap_handles = [Rectangle((0, 0), 1, 1) for _ in cmaps]
-        cmap_labels = ["Bucket 0", "Bucket 1", "Bucket 2", "Bucket 3"]
 
-        handler_map = dict(
-            zip(cmap_handles, [HandlerColormap(cmaps[i], num_stripes=len(cl), fc=color_lists[i]) for i, cl in enumerate(color_lists)]))
-        plt.legend(handles=cmap_handles, labels=cmap_labels, handler_map=handler_map, fontsize=12)
-
-        plt.yscale('log')
-        plt.grid(True)
-        plt.savefig(f'{configs[model]["lr"]}.png')
-        plt.cla()
-
-def visualize_performance_time_diagonal(performance: np.ndarray, time: np.ndarray, subsets, configs, epochs):
+def visualize_seeded_performance(performance: np.ndarray, time: np.ndarray, subsets, configs, dataset_name):
     """
     trade-off: validation performance - training time
 
@@ -153,58 +120,6 @@ def visualize_performance_time_diagonal(performance: np.ndarray, time: np.ndarra
     color_list_cp = []
     color_list_bl = []
 
-    for model in range(time.shape[1]):
-        for is_linear in range(time.shape[0]):
-            prev_end = 0
-            for subset in range(subsets.shape[-1]):
-                curr_subset = np.around(subsets[is_linear, model, subset], 2)
-                if is_linear == 0:
-                    color = cmap_cp(color_steps[subset])
-                    label = f"Lin, sub = {curr_subset}, ep = {epochs[is_linear, model, subset]}"
-                    color_list_cp.append(color)
-                else:
-                    color = cmap_bl(color_steps[subset])
-                    label = f"Exp, sub = {curr_subset}, ep = {epochs[is_linear, model, subset]}"
-                    color_list_bl.append(color)
-                x = np.array(time[is_linear, model, subset])
-                x += prev_end
-                y = performance[is_linear, model, subset]
-                prev_end = x[-1]
-                plt.plot(x, y, label=label, c=color)
-        plt.title("MNIST \n Moving along the fidelity diagonal")
-        plt.xlabel("Training Time in seconds"), plt.ylabel("Validation loss")
-
-        cmaps = [cmap_cp, cmap_bl]
-        cmap_handles = [Rectangle((0, 0), 1, 1) for _ in cmaps]
-        color_lists = [color_list_cp, color_list_bl]
-        cmap_labels = ["Linear", "Exponential"]
-
-        handler_map = dict(zip(cmap_handles, [HandlerColormap(cm, num_stripes=5, fc=color_lists[i]) for i, cm in enumerate(cmaps)]))
-        plt.legend(handles=cmap_handles, labels=cmap_labels, handler_map=handler_map, fontsize=12)
-
-        plt.yscale('log')
-        plt.grid(True)
-        plt.savefig(f'{configs[model]["lr"]}.png')
-        plt.cla()
-
-def visualize_seeded_performance(performance: np.ndarray, time: np.ndarray, subsets, configs):
-    """
-    trade-off: validation performance - training time
-
-    Parameters
-    ----------
-    performance
-        validation performance
-    time
-        training time
-    configs
-        model configurations
-    title
-        title of the graph
-    """
-    cmap_bl = matplotlib.cm.get_cmap("winter")
-    cmap_cp = matplotlib.cm.get_cmap("autumn")
-    color_steps = np.linspace(0, 1, subsets.shape[-1])
     for model in range(time.shape[2]):
         for checkpointing in range(time.shape[0]):
             prev_end = 0
@@ -213,9 +128,11 @@ def visualize_seeded_performance(performance: np.ndarray, time: np.ndarray, subs
                 if checkpointing == 0:
                     color = cmap_cp(color_steps[subset])
                     label = f"CP, sub = {curr_subset}"
+                    color_list_cp.append(color)
                 else:
                     color = cmap_bl(color_steps[subset])
                     label = f"BL, sub = {curr_subset}"
+                    color_list_bl.append(color)
                 x = np.mean(time[checkpointing, :, model, subset, :], axis=0)
                 x += prev_end
                 y = performance[checkpointing, :, model, subset, :]
@@ -225,12 +142,26 @@ def visualize_seeded_performance(performance: np.ndarray, time: np.ndarray, subs
                 plt.plot(x, y_mean, label=label, c=color)
                 plt.fill_between(x, y_mean - y_std, y_mean + y_std, facecolor=color, alpha=0.2)
                 # plt.yscale('log')
-        plt.title("Model with lr={}".format(configs[model]["lr"]))
-        plt.xlabel("Time in seconds"), plt.ylabel("Validation loss")
-        plt.legend()
+        title = f"Incremental Training on {dataset_name}"
+        plt.title(title, fontsize=20)
+        print(f"lr = {configs[model]['lr']}")
+        plt.xlabel("Time in seconds", fontsize=20), plt.ylabel("Validation loss", fontsize=20)
+        
+        plt.tick_params(direction='out', length=6, width=4, grid_alpha=0.5, labelsize=15)
+
+        cmaps = [matplotlib.cm.get_cmap("autumn"), matplotlib.cm.get_cmap("winter")]
+        cmap_handles = [Rectangle((0, 0), 1, 1) for _ in cmaps]
+        cmap_labels = [f"CP, sub = {subsets[0]}", f"BL, sub = {subsets[0]}"]
+        color_lists = [color_list_cp, color_list_bl]
+        handler_map = dict(
+            zip(cmap_handles, [HandlerColormap(cmaps[i], num_stripes=len(cl), fc=color_lists[i]) for i, cl in enumerate(color_lists)]))
+
+        plt.legend(handles=cmap_handles, labels=cmap_labels, handler_map=handler_map, fontsize=13.5, loc='lower left')
+
+        color_list_bl.clear()
+        color_list_cp.clear()
         plt.grid(True)
-        plt.savefig(f'model_{model}.png')
-        plt.clf()
+        plt.show()
 
 
 def visualize_performance_subset(performance: np.ndarray, subset: np.ndarray, configs, title: str):
@@ -349,8 +280,8 @@ def run_vis_fidelity_time():
 
 
 def run_vis_perf_time_with_bl():
-    score = load_results(file_namerun_vis_perf_time_diagonal="diagonal_linear", base_path="../../results/Moving_along_diag")
-    score_no_checkpoint = load_results(file_name="diagonal_exponential", base_path="../../results/Moving_along_diag")
+    score = load_results(file_name="checkpoint_mnist_proper", base_path="../../results/MNIST_usual")
+    score_no_checkpoint = load_results(file_name="no_checkpoint_mnist_proper", base_path="../../results/MNIST_usual")
 
     subsets = np.array(score["subsets"])
     performance = np.array([score["performance"], score_no_checkpoint["performance"]])
@@ -358,43 +289,25 @@ def run_vis_perf_time_with_bl():
     time = get_relative_timestamps(time)
     configs = np.array(score["configs"])
 
-    visualize_performance_time_bl(performance, time, subsets, configs)
-
-def run_vis_perf_time_diagonal():
-    score_lin = load_results(file_name="diagonal_linear", base_path="../../results/Moving_along_diag")
-    score_exp = load_results(file_name="diagonal_exponential", base_path="../../results/Moving_along_diag")
-
-    subsets = np.array([score_lin["subsets"], score_exp["subsets"]])
-    epochs = np.array([score_lin["epochs"], score_exp["epochs"]])
-    performance = np.array([score_lin["performance"], score_exp["performance"]])
-    time = np.array([score_lin["time_step"], score_exp["time_step"]])
-    time = get_relative_timestamps(time)
-    configs = np.array(score_lin["configs"])
-
-    visualize_performance_time_diagonal(performance, time, subsets, configs, epochs)
+    visualize_performance_time(performance, time, subsets, configs)
 
 def run_vis_perf_time():
-    performances = []
-    times = []
-    subsets = []
-    epochs = []
-    for filename in ["hb_1", "hb_2", "hb_3", "hb_4"]:
+    for filename in ["bl_seed_100", "bl_seed_200", "bl_seed_300", "bl_seed_400", "bl_seed_500", "cp_seed_100", "cp_seed_200",
+    "cp_seed_300", "cp_seed_400", "cp_seed_500"]:
         score = load_results(file_name=filename, base_path="../../results/Hyperband")
 
-        subsets.append(np.array(score["subsets"]))
-        epochs.append(np.array(score["epochs"]))
-        performances.append(np.array(score["performance"]))
+        subsets = np.array(score["subsets"])
+        performance = np.expand_dims(np.array(score["performance"]), axis=0)
         time = np.expand_dims(np.array(score["time_step"]), axis=0)
         time = get_relative_timestamps(time)
-        times.append(time.squeeze())
         configs = np.array(score["configs"])
 
-    visualize_performance_time_multiple(performances, times, subsets, configs, epochs)
+        visualize_performance_time(performance, time, subsets, configs)
 
 def run_seeded_perf():
     base_path = "../../results/CIFAR-Seeds-exponential"
-    # seeds = [0, 50, 100, 150, 200]
     seeds = [100, 200, 300, 400, 500]
+    # seeds = [0, 50, 100, 150, 200]
 
     cp_performance = []
     bl_performance = []
@@ -402,6 +315,8 @@ def run_seeded_perf():
     bl_time = []
     subsets, configs = None, None
     for i, seed in enumerate(seeds):
+        # cp_score = load_results(file_name=f"checkpoint_seed{seed}", base_path=base_path)
+        # bl_score = load_results(file_name=f"no_checkpoint_seed{seed}", base_path=base_path)
         cp_score = load_results(file_name=f"cp_seed_{seed}", base_path=base_path)
         bl_score = load_results(file_name=f"bl_seed_{seed}", base_path=base_path)
 
@@ -420,8 +335,8 @@ def run_seeded_perf():
     performance = np.array([cp_performance, bl_performance])
     time = np.array([cp_time, bl_time])
 
-    visualize_seeded_performance(performance, time, subsets, configs)
-visualize_performance_time_multiple
+    visualize_seeded_performance(performance, time, subsets, configs, "CIFAR10")
+
 
 def visualize_discretization():
     step_scale = ["linear", "exponential"]
@@ -473,6 +388,5 @@ if __name__ == "__main__":
 
     # run_vis_fidelity_time()
     # run_vis_perf_time_with_bl()
-    # run_vis_perf_time_diagonal()
-    run_vis_perf_time()
-    # run_seeded_perf()
+    # run_vis_perf_time()
+    run_seeded_perf()
