@@ -1,0 +1,20 @@
+\documentclass[a4paper,11pt]{article}
+\usepackage{algorithm} 
+\usepackage{algpseudocode} 
+\begin{document} 
+\begin{algorithm}
+	\caption{Warmstarting} 
+	\begin{algorithmic}[1]
+            \State \textbf{Given} dataset $D$ = \{(x, y)\}\textsuperscript{N},
+            \Statex model config $m$ and
+            \Statex fidelity basket = \{($d_{sub}, epoch)$\}\textsuperscript{M} where $d_{sub}$ is the data subset ratio
+		\For{each $d_{sub}, epoch$ in the fidelity basket}
+			\State Load model and optimizer if trained before, else initialize both
+            \State Get $D_{sub}$ from $D$, so that $| D_{sub} | = d_{sub} \times |D| $
+            \State Get dataloaders for training and evaluation
+            \State Train model for $epoch$ epochs on $D_{sub}$
+            \State Save model and optimizer
+		\EndFor
+	\end{algorithmic} 
+\end{algorithm}
+\end{document}
