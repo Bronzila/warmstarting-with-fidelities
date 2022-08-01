@@ -7,7 +7,7 @@ from matplotlib.colors import Normalize
 from matplotlib.patches import Rectangle
 
 from warmstarting.utils.serialization import load_results
-from warmstarting.utils.plotting import HandlerColormap
+from warmstarting.utils.plotting import HandlerColormap, cm_to_inch
 import seaborn as sns
 import pandas as pd
 from matplotlib.lines import Line2D
@@ -98,6 +98,7 @@ def visualize_performance_time_multiple(performance: np.ndarray, time: np.ndarra
              matplotlib.cm.get_cmap("cool"), matplotlib.cm.get_cmap("winter")]
     for model in range(time[0].shape[1]):
         color_lists = []
+        plt.figure(figsize=(cm_to_inch(23), cm_to_inch(18)))
         for bucket in range(len(time)):
             color_lists.append([])
             curr_perf = performance[bucket]
@@ -115,20 +116,25 @@ def visualize_performance_time_multiple(performance: np.ndarray, time: np.ndarra
                 x += prev_end
                 y = curr_perf[model, subset]
                 prev_end = x[-1]
-                plt.plot(x, y, label=label, c=color)
-        plt.title("MNIST\nHyperband-Bucket like scaling")
-        plt.xlabel("Training Time in seconds"), plt.ylabel("Validation loss")
+                plt.plot(x, y, label=label, c=color, linewidth=2)
+
+        plt.title("MNIST\nHyperband-Bucket like scaling", fontsize=20)
+        plt.xlabel("Training Time in seconds", fontsize=20), plt.ylabel("Validation loss", fontsize=20)
 
         cmap_handles = [Rectangle((0, 0), 1, 1) for _ in cmaps]
         cmap_labels = ["Bucket 0", "Bucket 1", "Bucket 2", "Bucket 3"]
 
         handler_map = dict(
             zip(cmap_handles, [HandlerColormap(cmaps[i], num_stripes=len(cl), fc=color_lists[i]) for i, cl in enumerate(color_lists)]))
-        plt.legend(handles=cmap_handles, labels=cmap_labels, handler_map=handler_map, fontsize=12)
+        plt.legend(handles=cmap_handles, labels=cmap_labels, handler_map=handler_map, fontsize=15)
+        plt.tick_params(direction='out', length=6, width=4, grid_alpha=0.5, labelsize=15)
 
         plt.yscale('log')
         plt.grid(True)
-        plt.savefig(f'{configs[model]["lr"]}.png')
+        plt.rcParams.update({'figure.autolayout': True})
+
+        # plt.show()
+        plt.savefig(f'{configs[model]["lr"]}.png', bbox_inches='tight')
         plt.cla()
 
 def visualize_performance_time_diagonal(performance: np.ndarray, time: np.ndarray, subsets, configs, epochs):
@@ -154,6 +160,7 @@ def visualize_performance_time_diagonal(performance: np.ndarray, time: np.ndarra
     color_list_bl = []
 
     for model in range(time.shape[1]):
+        plt.figure(figsize=(cm_to_inch(23), cm_to_inch(18)))
         for is_linear in range(time.shape[0]):
             prev_end = 0
             for subset in range(subsets.shape[-1]):
@@ -170,9 +177,9 @@ def visualize_performance_time_diagonal(performance: np.ndarray, time: np.ndarra
                 x += prev_end
                 y = performance[is_linear, model, subset]
                 prev_end = x[-1]
-                plt.plot(x, y, label=label, c=color)
-        plt.title("MNIST \n Moving along the fidelity diagonal")
-        plt.xlabel("Training Time in seconds"), plt.ylabel("Validation loss")
+                plt.plot(x, y, label=label, c=color, linewidth=3)
+        plt.title("MNIST \n Moving along the fidelity diagonal", fontsize=20)
+        plt.xlabel("Training Time in seconds", fontsize=20), plt.ylabel("Validation loss", fontsize=20)
 
         cmaps = [cmap_cp, cmap_bl]
         cmap_handles = [Rectangle((0, 0), 1, 1) for _ in cmaps]
@@ -180,10 +187,14 @@ def visualize_performance_time_diagonal(performance: np.ndarray, time: np.ndarra
         cmap_labels = ["Linear", "Exponential"]
 
         handler_map = dict(zip(cmap_handles, [HandlerColormap(cm, num_stripes=5, fc=color_lists[i]) for i, cm in enumerate(cmaps)]))
-        plt.legend(handles=cmap_handles, labels=cmap_labels, handler_map=handler_map, fontsize=12)
+        plt.legend(handles=cmap_handles, labels=cmap_labels, handler_map=handler_map, fontsize=15)
+        plt.tick_params(direction='out', length=6, width=4, grid_alpha=0.5, labelsize=15)
 
         plt.yscale('log')
         plt.grid(True)
+        plt.rcParams.update({'figure.autolayout': True})
+
+        # plt.show()
         plt.savefig(f'{configs[model]["lr"]}.png')
         plt.cla()
 
@@ -421,7 +432,6 @@ def run_seeded_perf():
     time = np.array([cp_time, bl_time])
 
     visualize_seeded_performance(performance, time, subsets, configs)
-visualize_performance_time_multiple
 
 def visualize_discretization():
     step_scale = ["linear", "exponential"]

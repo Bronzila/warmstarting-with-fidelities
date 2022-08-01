@@ -20,3 +20,7 @@ class HandlerColormap(HandlerBase):
                           transform=trans)
             stripes.append(s)
         return stripes
+
+
+def cm_to_inch(value):
+    return value / 2.54
