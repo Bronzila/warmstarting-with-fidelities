@@ -5,11 +5,20 @@ import matplotlib
 import numpy as np
 from matplotlib.colors import Normalize
 from warmstarting.utils.serialization import load_results
+from warmstarting.utils.plotting import cm_to_inch
 import seaborn as sns
 import pandas as pd
 from matplotlib.lines import Line2D
 from matplotlib.legend_handler import HandlerBase
 from matplotlib.patches import Rectangle
+
+title_fontsize = 30
+label_fontsize = 28
+legend_fontsize = 22
+tick_fontsize = 20
+tick_length = 12
+tick_width = 3
+
 
 def visualize_data_epoch_grid(performance: np.ndarray, epochs: np.ndarray, data_subsets: np.ndarray, configs):
     """
@@ -98,7 +107,7 @@ class HandlerColormap(HandlerBase):
         return stripes
 
 
-def visualize_seeded_performance(performance: np.ndarray, time: np.ndarray, subsets, configs, dataset_name):
+def visualize_seeded_performance(performance: np.ndarray, time: np.ndarray, subsets, configs, scaling, dataset_name):
     """
     trade-off: validation performance - training time
 
@@ -121,6 +130,7 @@ def visualize_seeded_performance(performance: np.ndarray, time: np.ndarray, subs
     color_list_bl = []
 
     for model in range(time.shape[2]):
+        plt.figure(figsize=(cm_to_inch(23), cm_to_inch(18)))
         for checkpointing in range(time.shape[0]):
             prev_end = 0
             for subset in range(subsets.shape[-1]):
@@ -142,26 +152,29 @@ def visualize_seeded_performance(performance: np.ndarray, time: np.ndarray, subs
                 plt.plot(x, y_mean, label=label, c=color)
                 plt.fill_between(x, y_mean - y_std, y_mean + y_std, facecolor=color, alpha=0.2)
                 # plt.yscale('log')
-        title = f"Incremental Training on {dataset_name}"
-        plt.title(title, fontsize=20)
-        print(f"lr = {configs[model]['lr']}")
-        plt.xlabel("Time in seconds", fontsize=20), plt.ylabel("Validation loss", fontsize=20)
+        title = f"{scaling} Scaling on {dataset_name}"
+        plt.title(title, fontsize=title_fontsize)
+        plt.xlabel("Time in seconds", fontsize=label_fontsize), plt.ylabel("Validation loss", fontsize=label_fontsize)
         
-        plt.tick_params(direction='out', length=6, width=4, grid_alpha=0.5, labelsize=15)
+        plt.tick_params(direction='out', length=tick_length, width=tick_width, grid_alpha=0.5, labelsize=tick_fontsize)
 
         cmaps = [matplotlib.cm.get_cmap("autumn"), matplotlib.cm.get_cmap("winter")]
         cmap_handles = [Rectangle((0, 0), 1, 1) for _ in cmaps]
-        cmap_labels = [f"CP, sub = {subsets[0]}", f"BL, sub = {subsets[0]}"]
+        cmap_labels = ["Checkpoint", "Baseline"]
         color_lists = [color_list_cp, color_list_bl]
         handler_map = dict(
             zip(cmap_handles, [HandlerColormap(cmaps[i], num_stripes=len(cl), fc=color_lists[i]) for i, cl in enumerate(color_lists)]))
 
-        plt.legend(handles=cmap_handles, labels=cmap_labels, handler_map=handler_map, fontsize=13.5, loc='lower left')
+        plt.legend(handles=cmap_handles, labels=cmap_labels, handler_map=handler_map, fontsize=legend_fontsize, loc='lower left')
+        # plt.rcParams.update({'figure.autolayout': True})
 
         color_list_bl.clear()
         color_list_cp.clear()
         plt.grid(True)
-        plt.show()
+
+        # plt.show()
+        plt.savefig(f'{configs[model]["lr"]}.png', bbox_inches='tight')
+        plt.cla()
 
 
 def visualize_performance_subset(performance: np.ndarray, subset: np.ndarray, configs, title: str):
@@ -335,7 +348,7 @@ def run_seeded_perf():
     performance = np.array([cp_performance, bl_performance])
     time = np.array([cp_time, bl_time])
 
-    visualize_seeded_performance(performance, time, subsets, configs, "CIFAR10")
+    visualize_seeded_performance(performance, time, subsets, configs, "Linear", "CIFAR10")
 
 
 def visualize_discretization():
