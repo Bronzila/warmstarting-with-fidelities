@@ -1,0 +1,25 @@
+experiment:
+    dataset: MNIST
+    model: SIMPLE-CNN
+    lr_sched:
+    criterion: CrossEntropyLoss
+    batch_size: 10
+    epoch_bounds: [3, 10]
+    subset_bounds: [0.2, 1]
+    use_checkpoints: True
+    shuffle: False
+    only_train_on_new: False
+    d_sub: 5
+    step_scaling: linear
+    seed: 200
+fidelity:
+    epoch: [10]
+    data_subset_ratio:
+configuration:
+    lr: [0.00025, 0.000125, 0.0001, 0.000075, 0.00005]
+    momentum: [0.1, 0.3, 0.6]
+    optimizer: [SGD, Adam]
+plot:
+    vis_method: []
+    results_file_name: checkpoint_seed200
+

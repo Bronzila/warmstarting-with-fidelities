@@ -1,0 +1,25 @@
+experiment:
+    dataset: CIFAR10
+    model: CNN
+    lr_sched:
+    criterion: CrossEntropyLoss
+    batch_size: 10
+    epoch_bounds: [3, 10]
+    subset_bounds: [0.2, 1]
+    use_checkpoints: True
+    shuffle: False
+    only_train_on_new: False
+    d_sub: 5
+    step_scaling: linear
+    seed: 200
+fidelity:
+    epoch: [10]
+    data_subset_ratio:
+configuration:
+    lr: [ 0.001, 0.00075, 0.0005, 0.00025, 0.0001 ]
+    momentum: [0, 0.1, 0.3, 0.6, 0.9]
+    optimizer: [SGD, Adam]
+plot:
+    vis_method: []
+    results_file_name: cp_seed_200
+
