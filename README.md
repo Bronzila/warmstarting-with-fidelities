@@ -7,7 +7,7 @@ It is a project created during the [Deep Learning Lab course 2022](https://rl.un
 
 ## Installation
 ```
-git clone https://github.com/University of Freiburg/warmstarting-with-fidelities.git
+git clone https://github.com/Bronzila/warmstarting-with-fidelities.git
 cd warmstarting-with-fidelities
 conda create -n warmstarting python=3.7
 conda activate warmstarting
