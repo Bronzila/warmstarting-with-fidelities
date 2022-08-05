@@ -44,6 +44,8 @@ class DummyBench(WarmstartingBenchTemplate):
             model = SimpleMLP()
         elif self.model_type == "SIMPLE-CNN":
             model = SimpleCNN()
+        elif self.model_type == "CNN":
+            model = CNN()
         elif self.model_type == "RESNET-18":
             model = ResNet18(num_classes=self.num_classes)
         elif self.model_type == "RESNET-34":
